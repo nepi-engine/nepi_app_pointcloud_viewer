@@ -23,10 +23,13 @@
 #- Add fit_pointclouds function to nepi_pc.py and add to node comnbine options
 #- Break rendering into its own node that this node starts up.  The new node would subscribe to this noodes pointcloud topic 
 
+RUN_AS_AUTO_SCRIPT = False
+
 import os
 # ROS namespace setup
 NEPI_BASE_NAMESPACE = '/nepi/s2x/'
-os.environ["ROS_NAMESPACE"] = NEPI_BASE_NAMESPACE[0:-1]
+if RUN_AS_AUTO_SCRIPT:
+	os.environ["ROS_NAMESPACE"] = NEPI_BASE_NAMESPACE[0:-1]
 
 import time
 import sys
@@ -462,11 +465,14 @@ class pointcloud_app(object):
 
     # Set up save data and save config services ########################################################
     self.save_data_if = SaveDataIF(data_product_names = self.data_products)
-    # Temp Fix until added as NEPI ROS Node
-    thisNamespace = NEPI_BASE_NAMESPACE + "pointcloud_app"
-    self.save_cfg_if = SaveCfgIF(updateParamsCallback=self.initParamServerValues, 
+    if  RUN_AS_AUTO_SCRIPT:
+      thisNamespace = NEPI_BASE_NAMESPACE + "pointcloud_app"
+      self.save_cfg_if = SaveCfgIF(updateParamsCallback=self.initParamServerValues, 
                                  paramsModifiedCallback=self.updateFromParamServer,
                                  namespace = thisNamespace)
+    else:
+      self.save_cfg_if = SaveCfgIF(updateParamsCallback=self.initParamServerValues, 
+                                 paramsModifiedCallback=self.updateFromParamServer)
 
 
     ## App Setup ########################################################
@@ -735,7 +741,8 @@ class pointcloud_app(object):
         primary_pc = list(self.pc_subs_dict.keys())[0]
       else:
         primary_pc = "None"
-      rospy.loginfo("Primary pointcloud set to: " + sel_topic)
+      if primary_pc != "None":
+        rospy.loginfo("Primary pointcloud set to: " + primary_pc)
     rospy.set_param('~pc_app/primary_pointcloud', primary_pc)
     
 

@@ -16,16 +16,6 @@ project(nepi_pointcloud_app)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-time
-sys
-rospy
-copy
-numpy
-threading
-open3d
-tf2_ros
-time
-yaml
 sensor_msgs
 std_msgs
 geometry_msgs
@@ -123,10 +113,12 @@ nepi_ros_interfaces
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES automation_mgr
-   CATKIN_DEPENDS nepi_ros_interfaces
+#  LIBRARIES pointcloud_app
+   CATKIN_DEPENDS sensor_msgs std_msgs geometry_msgs nepi_ros_interfaces
 #  DEPENDS CATKIN_DEPENDS sensor_msgs nepi_ros_interfaces nepi_edge_sdk_base 
 )
+
+
 
 ###########
 ## Build ##
@@ -141,7 +133,7 @@ include_directories(
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/automation_mgr.cpp
+#   src/${PROJECT_NAME}/name.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -152,7 +144,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/automation_mgr_node.cpp)
+# add_executable(${PROJECT_NAME}_node src/name.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -179,7 +171,7 @@ include_directories(
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
  catkin_install_python(PROGRAMS
-   scripts/automation_manager.py
+   scripts/pointcloud_app_node.py
    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
  )
 
@@ -215,7 +207,7 @@ install(DIRECTORY etc/
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_automation_mgr.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/name.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
