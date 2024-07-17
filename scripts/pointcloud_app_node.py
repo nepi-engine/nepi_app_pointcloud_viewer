@@ -23,13 +23,10 @@
 #- Add fit_pointclouds function to nepi_pc.py and add to node comnbine options
 #- Break rendering into its own node that this node starts up.  The new node would subscribe to this noodes pointcloud topic 
 
-RUN_AS_AUTO_SCRIPT = False
-
 import os
 # ROS namespace setup
 NEPI_BASE_NAMESPACE = '/nepi/s2x/'
-if RUN_AS_AUTO_SCRIPT:
-	os.environ["ROS_NAMESPACE"] = NEPI_BASE_NAMESPACE[0:-1]
+os.environ["ROS_NAMESPACE"] = NEPI_BASE_NAMESPACE[0:-1]
 
 import time
 import sys
@@ -211,7 +208,7 @@ class pointcloud_app(object):
     pc_topic = msg.data
     pc_topics = rospy.get_param('~~pc_app/selected_pointclouds',self.init_primary_pointcloud)
     if pc_topic in pc_topics:
-      rospy.set_param('~pc_app/primary_pointcloud',pc_topics)
+      rospy.set_param('~pc_app/primary_pointcloud',pc_topic)
     else:
       rospy.loginfo("Ignoring Set Primary Pointcloud as it is not in selected list")
     self.publish_selection_status()
@@ -465,14 +462,11 @@ class pointcloud_app(object):
 
     # Set up save data and save config services ########################################################
     self.save_data_if = SaveDataIF(data_product_names = self.data_products)
-    if  RUN_AS_AUTO_SCRIPT:
-      thisNamespace = NEPI_BASE_NAMESPACE + "pointcloud_app"
-      self.save_cfg_if = SaveCfgIF(updateParamsCallback=self.initParamServerValues, 
+    # Temp Fix until added as NEPI ROS Node
+    thisNamespace = NEPI_BASE_NAMESPACE + "pointcloud_app"
+    self.save_cfg_if = SaveCfgIF(updateParamsCallback=self.initParamServerValues, 
                                  paramsModifiedCallback=self.updateFromParamServer,
                                  namespace = thisNamespace)
-    else:
-      self.save_cfg_if = SaveCfgIF(updateParamsCallback=self.initParamServerValues, 
-                                 paramsModifiedCallback=self.updateFromParamServer)
 
 
     ## App Setup ########################################################
@@ -610,8 +604,10 @@ class pointcloud_app(object):
     status_msg.selected_pointcloud_topics = str(pointcloud_topic_list)
 
     primary_pointcloud = rospy.get_param('~pc_app/primary_pointcloud', self.init_primary_pointcloud)
-    if primary_pointcloud == "" and len(pointcloud_topic_list) > 0:
+    if primary_pointcloud == "None" and len(pointcloud_topic_list) > 0:
       primary_pointcloud = pointcloud_topic_list[0]
+    elif primary_pointcloud != "None" and len(pointcloud_topic_list) == 0:
+      primary_pointcloud = "None"
     rospy.set_param('~pc_app/primary_pointcloud', primary_pointcloud)
     status_msg.primary_pointcloud_topic = primary_pointcloud
 
@@ -727,12 +723,15 @@ class pointcloud_app(object):
           self.pc_subs_dict[sel_topic] = pc_sub
           rospy.loginfo("Pointcloud: " + sel_topic + " registered")
     # Unregister pointcloud subscribers if not in selected pointclouds list
+    unreg_topic_list = []
     for topic in self.pc_subs_dict.keys():
       if topic not in sel_topics:
           pc_sub = self.pc_subs_dict[topic]
           pc_sub.unregister()
-          self.pc_subs_dict.pop[topic]
           rospy.loginfo("Pointcloud: " + topic + " unregistered")
+          unreg_topic_list.append(topic) # Can't change dictionary while looping through dictionary
+    for topic in unreg_topic_list: 
+          self.pc_subs_dict.pop[topic]
     # Update primary pointcloud if needed
     primary_pc = rospy.get_param('~pc_app/primary_pointcloud', self.init_primary_pointcloud)
     #print(self.pc_subs_dict.keys())
