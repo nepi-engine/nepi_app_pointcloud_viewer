@@ -21,12 +21,14 @@
 #- Implement age_filter before pointcloud combine process
 #- Apply transforms to each point cloud before combining
 #- Add fit_pointclouds function to nepi_pc.py and add to node comnbine options
+#- Get pointcloud node integrated and working with nepi_engine_ws codebase.  Allready in there, just not working when enabled in launch file
+#- Add 3D bounding box selection and clipping group with new RUI selection box/section/page
 #- Improve pointcloud pub latency. Break rendering into its own node that this node starts up.  The new node would subscribe to this noodes pointcloud topic 
 
 import os
 # ROS namespace setup
 NEPI_BASE_NAMESPACE = '/nepi/s2x/'
-os.environ["ROS_NAMESPACE"] = NEPI_BASE_NAMESPACE[0:-1]
+#os.environ["ROS_NAMESPACE"] = NEPI_BASE_NAMESPACE[0:-1]
 
 import time
 import sys
@@ -197,7 +199,7 @@ class pointcloud_app(object):
       if pc_topic not in pc_topics:
         add_topic = True
       if add_topic:
-        rospy.loginfo("Adding Pointcloud topic to registered topics: " + pc_topic)
+        rospy.loginfo("PC_APP: Adding Pointcloud topic to registered topics: " + pc_topic)
         pc_topics.append(pc_topic)
     rospy.set_param('~pc_app/selected_pointclouds',pc_topics)
     self.publish_selection_status()
@@ -210,7 +212,7 @@ class pointcloud_app(object):
     if pc_topic in pc_topics:
       remove_topic = True
     if remove_topic:
-      rospy.loginfo("Removing Pointcloud topic from registered topics: " + pc_topic)
+      rospy.loginfo("PC_APP: Removing Pointcloud topic from registered topics: " + pc_topic)
       pc_topics.remove(pc_topic)
     rospy.set_param('~pc_app/selected_pointclouds',pc_topics)
     self.publish_selection_status()
@@ -222,7 +224,7 @@ class pointcloud_app(object):
     if pc_topic in pc_topics:
       rospy.set_param('~pc_app/primary_pointcloud',pc_topic)
     else:
-      rospy.loginfo("PC_APP Ignoring Set Primary Pointcloud as it is not in selected list")
+      rospy.loginfo("PC_APP: Ignoring Set Primary Pointcloud as it is not in selected list")
     self.publish_selection_status()
 
   def setAgeFilterCb(self,msg):
@@ -467,7 +469,7 @@ class pointcloud_app(object):
   ### Node Initialization
   def __init__(self):
    
-    rospy.loginfo("PC_APP Starting Initialization Processes")
+    rospy.loginfo("PC_APP: Starting Initialization Processes")
     self.initParamServerValues(do_updates = False)
     self.resetParamServer(do_updates = False)
    
@@ -475,10 +477,8 @@ class pointcloud_app(object):
     # Set up save data and save config services ########################################################
     self.save_data_if = SaveDataIF(data_product_names = self.data_products)
     # Temp Fix until added as NEPI ROS Node
-    thisNamespace = NEPI_BASE_NAMESPACE + "pointcloud_app"
     self.save_cfg_if = SaveCfgIF(updateParamsCallback=self.initParamServerValues, 
-                                 paramsModifiedCallback=self.updateFromParamServer,
-                                 namespace = thisNamespace)
+                                 paramsModifiedCallback=self.updateFromParamServer)
 
 
     ## App Setup ########################################################
@@ -509,7 +509,7 @@ class pointcloud_app(object):
     proc_frame_3d_sub = rospy.Subscriber('~set_frame_3d', String, self.setFrame3dCb, queue_size = 10)
 
     self.proc_status_pub = rospy.Publisher("~process/status", PointcloudProcessStatus, queue_size=1, latch=True)
-    self.proc_pc_pub = rospy.Publisher("~process/pointcloud", PointCloud2, queue_size=1)
+    self.proc_pc_pub = rospy.Publisher("~pointcloud", PointCloud2, queue_size=1)
 
     # Pointcloud Render Subscribers ########################################################
     view_reset_controls_sub = rospy.Subscriber("~render/reset_controls", Empty, self.resetRenderControlsCb, queue_size = 10)
@@ -524,7 +524,7 @@ class pointcloud_app(object):
     view_cam_rotate_sub = rospy.Subscriber("~render/set_camera_rotation", Vector3, self.setCamRotationCb, queue_size = 10)
 
     self.view_status_pub = rospy.Publisher("~render/status", PointcloudRenderStatus, queue_size=1, latch=True)
-    self.view_img_pub = rospy.Publisher("~render/pointcloud_image", Image, queue_size=1)
+    self.view_img_pub = rospy.Publisher("~pointcloud_image", Image, queue_size=1)
 
 
 
@@ -544,7 +544,7 @@ class pointcloud_app(object):
     rospy.Timer(rospy.Duration(self.update_data_products_interval_sec), self.updateDataProductsThread)
 
     ## Initiation Complete
-    rospy.loginfo("PC_APP Initialization Complete")
+    rospy.loginfo("PC_APP: Initialization Complete")
 
 
   #######################
@@ -563,7 +563,7 @@ class pointcloud_app(object):
     pass
 
   def initParamServerValues(self,do_updates = True):
-      rospy.loginfo("PC_APP Reseting param values to init values")
+      rospy.loginfo("PC_APP: Reseting param values to init values")
       self.init_selected_pointclouds = rospy.get_param('~pc_app/selected_pointclouds', [])
       self.init_primary_pointcloud = rospy.get_param('~pc_app/primary_pointcloud', "None")
       self.init_age_filter_s = rospy.get_param('~pc_app/age_filter_s', Factory_Age_Filter_S)
@@ -729,18 +729,18 @@ class pointcloud_app(object):
           exec('self.' + topic_uid + '_timestamp = None')
           exec('self.' + topic_uid + '_frame = None')
           exec('self.' + topic_uid + '_lock = threading.Lock()')
-          rospy.loginfo("Subscribing to topic: " + sel_topic)
-          rospy.loginfo("with topic_uid: " + topic_uid)
+          rospy.loginfo("PC_APP: Subscribing to topic: " + sel_topic)
+          #rospy.loginfo("PC_APP: with topic_uid: " + topic_uid)
           pc_sub = rospy.Subscriber(sel_topic, PointCloud2, lambda msg: self.pointcloudCb(msg, sel_topic), queue_size = 10)
           self.pc_subs_dict[sel_topic] = pc_sub
-          rospy.loginfo("PC_APP Pointcloud: " + sel_topic + " registered")
+          rospy.loginfo("PC_APP: Pointcloud: " + sel_topic + " registered")
     # Unregister pointcloud subscribers if not in selected pointclouds list
     unreg_topic_list = []
     for topic in self.pc_subs_dict.keys():
       if topic not in sel_topics:
           pc_sub = self.pc_subs_dict[topic]
           pc_sub.unregister()
-          rospy.loginfo("PC_APP Pointcloud: " + topic + " unregistered")
+          rospy.loginfo("PC_APP: Pointcloud: " + topic + " unregistered")
           unreg_topic_list.append(topic) # Can't change dictionary while looping through dictionary
     for topic in unreg_topic_list: 
           self.pc_subs_dict.pop(topic)
@@ -753,7 +753,7 @@ class pointcloud_app(object):
       else:
         primary_pc = "None"
       if primary_pc != "None":
-        rospy.loginfo("PC_APP Primary pointcloud set to: " + primary_pc)
+        rospy.loginfo("PC_APP: Primary pointcloud set to: " + primary_pc)
     rospy.set_param('~pc_app/primary_pointcloud', primary_pc)
     
 
@@ -831,7 +831,7 @@ class pointcloud_app(object):
               o3d_pc_add = eval('self.' + topic_uid + '_pc')
               eval('self.' + topic_uid + '_lock').release()
             #else:
-              #rospy.loginfo("PC_APP Combine pointcloud not registered yet: " + topic_puid)
+              #rospy.loginfo("PC_APP: Combine pointcloud not registered yet: " + topic_puid)
             if ros_timestamp_add is not None:
               #pc_age = current_time - ros_timestamp_add
               pc_age = 0.0 # Temp 
@@ -1042,7 +1042,7 @@ class pointcloud_app(object):
   # Node Cleanup Function
   
   def cleanup_actions(self):
-    rospy.loginfo("PC_APP Shutting down: Executing script cleanup actions")
+    rospy.loginfo("PC_APP: Shutting down: Executing script cleanup actions")
 
 
 #########################################
@@ -1052,7 +1052,7 @@ if __name__ == '__main__':
   node_name = "pointcloud_app"
   rospy.init_node(name=node_name)
   #Launch the node
-  rospy.loginfo("PC_APP Launching node named: " + node_name)
+  rospy.loginfo("PC_APP: Launching node named: " + node_name)
   node_class = eval(node_name)
   node = node_class()
   #Set up node shutdown
