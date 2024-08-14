@@ -870,7 +870,7 @@ class NepiPointcloudApp(object):
           if clip_enable:
             min_m = rospy.get_param('~pc_app/process/range_min_m', self.init_proc_range_min_m)
             max_m = rospy.get_param('~pc_app/process/range_max_m', self.init_proc_range_max_m)
-            o3d_pc = nepi_pc.range_clip(o3d_pc, min_m, max_m)
+            o3d_pc = nepi_pc.range_clip_spherical(o3d_pc, min_m, max_m)
 
           if self.bounding_box3d_topic != "NONE" and self.bounding_box3d_msg is not None:
             clip_box_msg = copy.deepcopy(self.bounding_box3d_msg)
