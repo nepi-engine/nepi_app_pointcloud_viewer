@@ -929,7 +929,7 @@ class NepiPointcloudApp(object):
             self.clip_min_range_m = min_range_m + start_range_ratio  * delta_range_m
             self.clip_max_range_m = min_range_m + stop_range_ratio  * delta_range_m
             if start_range_ratio > 0 or stop_range_ratio < 1:
-              o3d_pc = nepi_pc.range_clip( o3d_pc, self.clip_min_range_m, self.clip_max_range_m)
+              o3d_pc = nepi_pc.range_clip_spherical( o3d_pc, self.clip_min_range_m, self.clip_max_range_m)
 
             if cam_pos[0] < 0:
               zoom_ratio = 1 - zoom_ratio
