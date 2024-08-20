@@ -28,10 +28,8 @@
 import os
 # ROS namespace setup
 NEPI_BASE_NAMESPACE = '/nepi/s2x/'
-#os.environ["ROS_NAMESPACE"] = NEPI_BASE_NAMESPACE[0:-1]
+os.environ["ROS_NAMESPACE"] = NEPI_BASE_NAMESPACE[0:-1]
 import rospy
-
-
 
 import time
 import sys
@@ -40,14 +38,11 @@ import copy
 import numpy as np
 import threading
 import open3d as o3d
-import tkinter as tk
 import tf2_ros
 import time
 import yaml
 import cv2
 
-
-from tkinter import filedialog, Scale, HORIZONTAL
 from sensor_msgs.msg import Image, PointCloud2
 from cv_bridge import CvBridge
 from std_msgs.msg import UInt8, Empty, String, Bool, Float32, Int32
@@ -137,6 +132,7 @@ class NepiPointcloudApp(object):
 
   pointclouds_should_update = False
 
+  view_img_pub = None
   acquiring = False
 ###################
 ## App Callbacks
@@ -537,7 +533,6 @@ class NepiPointcloudApp(object):
     render_enable_sub = rospy.Subscriber("~render/set_render_enable", Bool, self.setRenderEnableCb, queue_size = 10)
 
     self.view_status_pub = rospy.Publisher("~render/status", PointcloudRenderStatus, queue_size=1, latch=True)
-    self.view_img_pub = rospy.Publisher("~pointcloud_image", Image, queue_size=1)
 
 
 
@@ -751,6 +746,10 @@ class NepiPointcloudApp(object):
           pc_sub = rospy.Subscriber(sel_topic, PointCloud2, lambda msg: self.pointcloudCb(msg, sel_topic), queue_size = 10)
           self.pc_subs_dict[sel_topic] = pc_sub
           rospy.loginfo("PC_APP: Pointcloud: " + sel_topic + " registered")
+    if len(list(self.pc_subs_dict.keys())) > 0 and self.view_img_pub is not None:
+      self.view_img_pub = rospy.Publisher("~pointcloud_image", Image, queue_size=1)
+    else:
+      self.view_img_pub = None
     # Unregister pointcloud subscribers if not in selected pointclouds list
     unreg_topic_list = []
     for topic in self.pc_subs_dict.keys():
@@ -787,7 +786,7 @@ class NepiPointcloudApp(object):
           eval('self.' + topic_uid + '_lock').acquire()
           exec('self.' + topic_uid + '_timestamp = msg.header.stamp')
           exec('self.' + topic_uid + '_frame = msg.header.frame_id')
-          o3d_pc = nepi_pc.rospc_to_o3dpc(msg, remove_nans=False)
+          o3d_pc = nepi_pc.rospc_to_o3dpc(msg, remove_nans=True)
           # ToDo: Apply Frame Transforms before assigning and releasing
           exec('self.' + topic_uid + '_pc = o3d_pc')
           eval('self.' + topic_uid + '_lock').release()
@@ -809,15 +808,15 @@ class NepiPointcloudApp(object):
 
     ros_frame_id = rospy.get_param('~pc_app/process/frame_3d', self.init_proc_frame_3d)
     primary_pc = rospy.get_param('~pc_app/primary_pointcloud', self.init_primary_pointcloud)
-
+    
     if (need_pc or need_img and primary_pc != "None"):
       o3d_pc = None
       # Combine selected 
       age_filter_s = rospy.get_param('~pc_app/age_filter_s', self.init_age_filter_s)
       combine_option = rospy.get_param('~pc_app/combine_option',self.init_combine_option)
+      transforms_dict = rospy.get_param('~pc_app/transforms_dict',self.init_transforms_dict)
       current_time = rospy.get_rostime()
       pc_add_count = 0
-
       # Get priamary pointcloud
       topic_puid = primary_pc.replace('/','')
       if primary_pc in self.pc_subs_dict.keys():
@@ -825,12 +824,17 @@ class NepiPointcloudApp(object):
         ros_timestamp = eval('self.' + topic_puid + '_timestamp')
         primary_pc_frame = eval('self.' + topic_puid + '_frame')
         if ros_timestamp is not None:
-          #pc_age = current_time - ros_timestamp_add
+          #pc_age = abs(current_time - ros_timestamp)
+          #pc_age = pc_age.to_sec()
           pc_age = 0.0 # Temp 
           if pc_age <= age_filter_s:
             o3d_ppc = eval('self.' + topic_puid + '_pc')
             if o3d_ppc is not None:
               o3d_pc = copy.deepcopy(o3d_ppc)
+              if primary_pc in transforms_dict:
+                if primary_pc_frame != "nepi_center_frame" and primary_pc_frame != "map":
+                  transform = transforms_dict[primary_pc]
+                  o3d_pc = self.transformPointcloud(o3d_pc, transform)
               pc_add_count += 1
         eval('self.' + topic_puid + '_lock').release()
         if ros_frame_id == "primary_pc_frame":
@@ -845,16 +849,22 @@ class NepiPointcloudApp(object):
             if topic in self.pc_subs_dict.keys():
               eval('self.' + topic_uid + '_lock').acquire()
               ros_timestamp_add = eval('self.' + topic_uid + '_timestamp')
+              pc_frame_add = eval('self.' + topic_uid + '_frame')
               o3d_pc_add = eval('self.' + topic_uid + '_pc')
               eval('self.' + topic_uid + '_lock').release()
             #else:
               #rospy.loginfo("PC_APP: Combine pointcloud not registered yet: " + topic_puid)
             if ros_timestamp_add is not None:
-              #pc_age = current_time - ros_timestamp_add
+              #pc_age = abs(current_time - ros_timestamp)
+              #pc_age = pc_age.to_sec()
               pc_age = 0.0 # Temp 
               if o3d_pc_add is not None:
                 if pc_age <= age_filter_s:
                   if combine_option == 'Add':
+                    if topic in transforms_dict:
+                      if pc_frame_add != "nepi_center_frame" and pc_frame_add != "map":
+                        transform = transforms_dict[topic]
+                        o3d_pc_add = self.transformPointcloud(o3d_pc_add, transform)
                     o3d_pc += o3d_pc_add
                     pc_add_count += 1
                   if ros_timestamp_add > ros_timestamp:
@@ -938,7 +948,6 @@ class NepiPointcloudApp(object):
             rotate_angle = (0.5 - rotate_ratio) * 2 * 180
             rotate_vector = [0, 0, rotate_angle]
             o3d_pc = nepi_pc.rotate_pc(o3d_pc, rotate_vector)
-            
 
             tilt_angle = (0.5 - tilt_ratio) * 2 * 180
             tilt_vector = [0, tilt_angle, 0]
@@ -963,9 +972,10 @@ class NepiPointcloudApp(object):
 
             # Publish and Save Pointcloud Image Data
             if ros_img_msg is not None:
-              if img_has_subscribers:
-                if not rospy.is_shutdown():
-                  self.view_img_pub.publish(ros_img_msg)
+              if self.view_img_pub is not None:
+                if img_has_subscribers:
+                  if not rospy.is_shutdown():
+                    self.view_img_pub.publish(ros_img_msg)
 
               if img_saving_is_enabled is True or img_snapshot_enabled is True:
                 cv2_img = nepi_img.rosimg_to_cv2img(ros_img_msg)
@@ -1042,6 +1052,20 @@ class NepiPointcloudApp(object):
     heading = transform_msg.heading_offset
     transform = [x,y,z,roll,pitch,yaw,heading]
     return transform
+  
+  def transformPointcloud(self, o3d_pc, transform):
+    x = transform[0]
+    y = transform[1]
+    z = transform[2]
+    translation_vector = [x, y, z]
+    roll = transform[3]
+    pitch = transform[4]
+    yaw = transform[5]
+    rotate_vector = [roll, pitch, yaw]
+    o3d_pc = nepi_pc.translate_pc(o3d_pc, translation_vector)
+    o3d_pc = nepi_pc.rotate_pc(o3d_pc, rotate_vector)
+    return o3d_pc
+
 
   def addTransformToDict(self,transform_msg):
     topic = transform_msg.topic_namespace
