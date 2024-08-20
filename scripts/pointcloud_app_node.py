@@ -28,7 +28,7 @@
 import os
 # ROS namespace setup
 NEPI_BASE_NAMESPACE = '/nepi/s2x/'
-os.environ["ROS_NAMESPACE"] = NEPI_BASE_NAMESPACE[0:-1]
+#os.environ["ROS_NAMESPACE"] = NEPI_BASE_NAMESPACE[0:-1]
 import rospy
 
 import time
@@ -70,7 +70,7 @@ from nepi_edge_sdk_base.save_cfg_if import SaveCfgIF
 
 # Factory Control Values
 Factory_Combine_Option = 'Add'
-Factory_Frame_3d = 'primary_pc_frame'
+Factory_Frame_3d = 'nepi_center_frame'
 Factory_Age_Filter_S = 10.0
 
 Factory_Clip_Range_Enabled = True
@@ -633,6 +633,7 @@ class NepiPointcloudApp(object):
       primary_pointcloud = "None"
     rospy.set_param('~pc_app/primary_pointcloud', primary_pointcloud)
     status_msg.primary_pointcloud_topic = primary_pointcloud
+    status_msg.publishing_pointcloud_img = self.view_img_pub is not None
 
     age_filter_s = rospy.get_param('~pc_app/age_filter_s', self.init_age_filter_s)
     status_msg.age_filter_s = age_filter_s
@@ -746,10 +747,17 @@ class NepiPointcloudApp(object):
           pc_sub = rospy.Subscriber(sel_topic, PointCloud2, lambda msg: self.pointcloudCb(msg, sel_topic), queue_size = 10)
           self.pc_subs_dict[sel_topic] = pc_sub
           rospy.loginfo("PC_APP: Pointcloud: " + sel_topic + " registered")
-    if len(list(self.pc_subs_dict.keys())) > 0 and self.view_img_pub is not None:
+    #rospy.loginfo(self.pc_subs_dict.keys())
+    #rospy.loginfo(self.view_img_pub is None)
+    if len(list(self.pc_subs_dict.keys())) > 0 and self.view_img_pub is None:
+      rospy.loginfo("PC_APP: Setting up pointcloud_image pub")
       self.view_img_pub = rospy.Publisher("~pointcloud_image", Image, queue_size=1)
-    else:
+      time.sleep(1)
+    elif len(list(self.pc_subs_dict.keys())) == 0 and self.view_img_pub is not None:
+      rospy.loginfo("PC_APP: Taking down pointcloud_image pub")
+      self.view_img_pub.unregister()
       self.view_img_pub = None
+      time.sleep(1)
     # Unregister pointcloud subscribers if not in selected pointclouds list
     unreg_topic_list = []
     for topic in self.pc_subs_dict.keys():
@@ -800,8 +808,10 @@ class NepiPointcloudApp(object):
     pc_snapshot_enabled = self.save_data_if.data_product_snapshot_enabled('pointcloud')
     need_pc = (pc_has_subscribers is True) or (pc_saving_is_enabled is True) or (pc_snapshot_enabled is True)
 
-
-    img_has_subscribers = (self.view_img_pub.get_num_connections() > 0)
+    if self.view_img_pub is not None:
+      img_has_subscribers = (self.view_img_pub.get_num_connections() > 0)
+    else:
+      img_has_subscribers = False
     img_saving_is_enabled = self.save_data_if.data_product_saving_enabled('pointcloud_image')
     img_snapshot_enabled = self.save_data_if.data_product_snapshot_enabled('pointcloud_image')
     need_img = (img_has_subscribers is True) or (img_saving_is_enabled is True) or (img_snapshot_enabled is True)
