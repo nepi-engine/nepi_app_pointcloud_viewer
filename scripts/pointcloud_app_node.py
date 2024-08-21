@@ -109,7 +109,7 @@ STANDARD_IMAGE_SIZES = ['630 x 900','720 x 1080','955 x 600','1080 x 1440','1024
 class NepiPointcloudApp(object):
   combine_options = ["Add"]
   data_products = ["pointcloud","pointcloud_image"]
-  frame3d_list = ['nepi_center_frame','primary_pc_frame','map']
+  frame3d_list = ['nepi_center_frame','map']
   pc_subs_dict = dict()
   pc_min_range_m = 0.0
   pc_max_range_m = 0.1
@@ -144,6 +144,7 @@ class NepiPointcloudApp(object):
     rospy.set_param('~pc_app/selected_pointclouds', [])
     rospy.set_param('~pc_app/primary_pointcloud', "None")
     rospy.set_param('~pc_app/age_filter_s', Factory_Age_Filter_S)
+    rospy.set_param('~pc_app/frame_3d', Factory_Frame_3d)
     rospy.set_param('~pc_app/transforms_dict', dict())
     rospy.set_param('~pc_app/combine_option', Factory_Combine_Option)
     
@@ -154,7 +155,7 @@ class NepiPointcloudApp(object):
     rospy.set_param('~pc_app/process/voxel_downsample_size',Factory_Voxel_DownSample_Size)
     rospy.set_param('~pc_app/process/uniform_downsample_k_points',Factory_Uniform_DownSample_K_Points)
     rospy.set_param('~pc_app/process/outlier_removal_num_neighbors',Factory_Outlier_Removal_Num_Neighbors)
-    rospy.set_param('~pc_app/process/frame_3d', Factory_Frame_3d)
+
 
     rospy.set_param('~pc_app/render/image_width',  Factory_Image_Width)
     rospy.set_param('~pc_app/render/image_height', Factory_Image_Height)
@@ -283,8 +284,7 @@ class NepiPointcloudApp(object):
     self.bounding_box3d_topic = "NONE"
     rospy.set_param('~pc_app/process/voxel_downsample_size',self.init_proc_voxel_downsample_size)
     rospy.set_param('~pc_app/process/uniform_downsample_k_points',self.init_proc_uniform_downsample_k_points)
-    rospy.set_param('~pc_app/process/outlier_removal_num_neighbors',self.init_proc_outlier_removal_num_neighbors) 
-    rospy.set_param('~pc_app/process/frame_3d', self.init_proc_frame_3d)   
+    rospy.set_param('~pc_app/process/outlier_removal_num_neighbors',self.init_proc_outlier_removal_num_neighbors)   
     if do_updates:
       self.publish_process_status()
 
@@ -341,7 +341,7 @@ class NepiPointcloudApp(object):
     frame_3d = msg.data
     frame3d_list = self.frame3d_list
     if frame_3d in frame3d_list:
-      rospy.set_param('~pc_app/process/frame_3d',frame_3d)
+      rospy.set_param('~pc_app/frame_3d',frame_3d)
     self.publish_process_status()
 
 ###################
@@ -503,6 +503,7 @@ class NepiPointcloudApp(object):
     sel_upate_transform_sub = rospy.Subscriber('~update_transform', Frame3DTransformUpdate, self.updateTransformCb, queue_size = 10)
     sel_remove_transform_sub = rospy.Subscriber('~remove_transform', String, self.removeTransformCb, queue_size = 10)
     sel_combine_option = rospy.Subscriber('~set_combine_option', String, self.setCombineOptionCb, queue_size = 10)
+    sel_frame_3d_sub = rospy.Subscriber('~set_frame_3d', String, self.setFrame3dCb, queue_size = 10)
 
     self.sel_status_pub = rospy.Publisher("~status", PointcloudSelectionStatus, queue_size=1, latch=True)
 
@@ -514,7 +515,7 @@ class NepiPointcloudApp(object):
     proc_voxel_downsample_size_sub = rospy.Subscriber("~process/set_voxel_downsample_size", Float32, self.setVoxelSizeCb, queue_size = 10)
     proc_uniform_downsample_k_points_sub = rospy.Subscriber("~process/uniform_downsample_k_points", Int32, self.setUniformPointsCb, queue_size = 10) 
     proc_outlier_removal_num_neighbors_sub = rospy.Subscriber("~process/outlier_removal_num_neighbors", Int32, self.setOutlierNumCb, queue_size = 10)
-    proc_frame_3d_sub = rospy.Subscriber('~set_frame_3d', String, self.setFrame3dCb, queue_size = 10)
+
 
     self.proc_status_pub = rospy.Publisher("~process/status", PointcloudProcessStatus, queue_size=1, latch=True)
     self.proc_pc_pub = rospy.Publisher("~pointcloud", PointCloud2, queue_size=1)
@@ -584,7 +585,7 @@ class NepiPointcloudApp(object):
       self.init_proc_voxel_downsample_size = rospy.get_param('~pc_app/process/voxel_downsample_size',Factory_Voxel_DownSample_Size)
       self.init_proc_uniform_downsample_k_points = rospy.get_param('~pc_app/process/uniform_downsample_k_points',Factory_Uniform_DownSample_K_Points)
       self.init_proc_outlier_removal_num_neighbors = rospy.get_param('~pc_app/process/outlier_removal_num_neighbors',Factory_Outlier_Removal_Num_Neighbors)
-      self.init_proc_frame_3d = rospy.get_param('~pc_app/process/frame_3d', Factory_Frame_3d)
+      self.init_proc_frame_3d = rospy.get_param('~pc_app/frame_3d', Factory_Frame_3d)
     
       self.init_image_width = rospy.get_param('~pc_app/render/image_width',  Factory_Image_Width)
       self.init_image_height = rospy.get_param('~pc_app/render/image_height', Factory_Image_Height)
@@ -638,6 +639,10 @@ class NepiPointcloudApp(object):
     age_filter_s = rospy.get_param('~pc_app/age_filter_s', self.init_age_filter_s)
     status_msg.age_filter_s = age_filter_s
 
+
+    status_msg.available_3d_frames = str(self.frame3d_list)
+    status_msg.output_3d_frame = rospy.get_param('~pc_app/frame_3d', self.init_proc_frame_3d) 
+
     transforms_dict = rospy.get_param('~pc_app/transforms_dict',self.init_transforms_dict)
     for pc_topic in pointcloud_topic_list:
       if pc_topic not in transforms_dict.keys():
@@ -669,10 +674,7 @@ class NepiPointcloudApp(object):
     
     status_msg.voxel_downsample_size_m = rospy.get_param('~pc_app/process/voxel_downsample_size',self.init_proc_voxel_downsample_size)
     status_msg.uniform_downsample_points = rospy.get_param('~pc_app/process/uniform_downsample_k_points',self.init_proc_uniform_downsample_k_points)
-    status_msg.outlier_k_points = rospy.get_param('~pc_app/process/outlier_removal_num_neighbors',self.init_proc_outlier_removal_num_neighbors)
-
-    status_msg.available_3d_frames = str(self.frame3d_list)
-    status_msg.frame_3d = rospy.get_param('~pc_app/process/frame_3d', self.init_proc_frame_3d)  
+    status_msg.outlier_k_points = rospy.get_param('~pc_app/process/outlier_removal_num_neighbors',self.init_proc_outlier_removal_num_neighbors) 
 
     self.proc_status_pub.publish(status_msg)
 
@@ -817,10 +819,10 @@ class NepiPointcloudApp(object):
     img_snapshot_enabled = self.save_data_if.data_product_snapshot_enabled('pointcloud_image')
     need_img = (img_has_subscribers is True) or (img_saving_is_enabled is True) or (img_snapshot_enabled is True)
 
-    ros_frame_id = rospy.get_param('~pc_app/process/frame_3d', self.init_proc_frame_3d)
-    primary_pc = rospy.get_param('~pc_app/primary_pointcloud', self.init_primary_pointcloud)
+    ros_frame_id = rospy.get_param('~pc_app/frame_3d', self.init_proc_frame_3d)
+    topic_primary = rospy.get_param('~pc_app/primary_pointcloud', self.init_primary_pointcloud)
     
-    if (need_pc or need_img and primary_pc != "None"):
+    if (need_pc or need_img and topic_primary != "None"):
       o3d_pc = None
       # Combine selected 
       age_filter_s = rospy.get_param('~pc_app/age_filter_s', self.init_age_filter_s)
@@ -829,8 +831,8 @@ class NepiPointcloudApp(object):
       current_time = rospy.get_rostime()
       pc_add_count = 0
       # Get priamary pointcloud
-      topic_puid = primary_pc.replace('/','')
-      if primary_pc in self.pc_subs_dict.keys():
+      topic_puid = topic_primary.replace('/','')
+      if topic_primary in self.pc_subs_dict.keys():
         eval('self.' + topic_puid + '_lock').acquire()
         ros_timestamp = eval('self.' + topic_puid + '_timestamp')
         primary_pc_frame = eval('self.' + topic_puid + '_frame')
@@ -842,14 +844,16 @@ class NepiPointcloudApp(object):
             o3d_ppc = eval('self.' + topic_puid + '_pc')
             if o3d_ppc is not None:
               o3d_pc = copy.deepcopy(o3d_ppc)
-              if primary_pc in transforms_dict:
-                if primary_pc_frame != "nepi_center_frame" and primary_pc_frame != "map":
-                  transform = transforms_dict[primary_pc]
+              if topic_primary in transforms_dict:
+                transform = transforms_dict[topic_primary]
+                all_zeros = True
+                for item in transform:
+                  if item != 0:
+                    all_zeros = False
+                if primary_pc_frame != "nepi_center_frame" and all_zeros == False:
                   o3d_pc = self.transformPointcloud(o3d_pc, transform)
               pc_add_count += 1
         eval('self.' + topic_puid + '_lock').release()
-        if ros_frame_id == "primary_pc_frame":
-          ros_frame_id = primary_pc_frame
 
       if o3d_pc is not None:
         # Add remaining selected pointclouds
@@ -873,8 +877,12 @@ class NepiPointcloudApp(object):
                 if pc_age <= age_filter_s:
                   if combine_option == 'Add':
                     if topic in transforms_dict:
-                      if pc_frame_add != "nepi_center_frame" and pc_frame_add != "map":
-                        transform = transforms_dict[topic]
+                      transform = transforms_dict[topic]
+                      all_zeros = True
+                      for item in transform:
+                        if item != 0:
+                          all_zeros = False
+                      if pc_frame_add != "nepi_center_frame" and all_zeros == False:
                         o3d_pc_add = self.transformPointcloud(o3d_pc_add, transform)
                     o3d_pc += o3d_pc_add
                     pc_add_count += 1
