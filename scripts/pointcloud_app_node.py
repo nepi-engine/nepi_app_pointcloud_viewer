@@ -779,6 +779,7 @@ class NepiPointcloudApp(object):
       if primary_pc != "None":
         rospy.loginfo("PC_APP: Primary pointcloud set to: " + primary_pc)
     rospy.set_param('~pc_app/primary_pointcloud', primary_pc)
+    self.publish_selection_status()
     
 
   def pointcloudCb(self,msg,topic):
