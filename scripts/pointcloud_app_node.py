@@ -834,12 +834,10 @@ class NepiPointcloudApp(object):
       topic_puid = topic_primary.replace('/','')
       if topic_primary in self.pc_subs_dict.keys():
         eval('self.' + topic_puid + '_lock').acquire()
-        ros_timestamp = eval('self.' + topic_puid + '_timestamp')
+        ros_timestamp_pr = eval('self.' + topic_puid + '_timestamp')
         primary_pc_frame = eval('self.' + topic_puid + '_frame')
-        if ros_timestamp is not None:
-          #pc_age = abs(current_time - ros_timestamp)
-          #pc_age = pc_age.to_sec()
-          pc_age = 0.0 # Temp 
+        if ros_timestamp_pr is not None:
+          pc_age =(current_time.to_sec() - ros_timestamp_pr())
           if pc_age <= age_filter_s:
             o3d_ppc = eval('self.' + topic_puid + '_pc')
             if o3d_ppc is not None:
@@ -872,7 +870,7 @@ class NepiPointcloudApp(object):
             if ros_timestamp_add is not None:
               #pc_age = abs(current_time - ros_timestamp)
               #pc_age = pc_age.to_sec()
-              pc_age = 0.0 # Temp 
+              pc_age =(current_time.to_sec() - ros_timestamp_add())
               if o3d_pc_add is not None:
                 if pc_age <= age_filter_s:
                   if combine_option == 'Add':
@@ -886,8 +884,7 @@ class NepiPointcloudApp(object):
                         o3d_pc_add = self.transformPointcloud(o3d_pc_add, transform)
                     o3d_pc += o3d_pc_add
                     pc_add_count += 1
-                  if ros_timestamp_add > ros_timestamp:
-                    ros_timestamp = ros_timestamp_add
+
   
       if pc_add_count > 0:
         self.pc_min_range_m = nepi_pc.get_min_range(o3d_pc)
@@ -926,12 +923,12 @@ class NepiPointcloudApp(object):
           # Publish and Save Pointcloud Data
           if pc_has_subscribers:
             # ToDo Convert to map frame if selected
-            ros_pc_out_msg = nepi_pc.o3dpc_to_rospc(o3d_pc, stamp=ros_timestamp, frame_id=ros_frame_id)
+            ros_pc_out_msg = nepi_pc.o3dpc_to_rospc(o3d_pc, stamp=current_time, frame_id=ros_frame_id)
             if not rospy.is_shutdown():
               self.proc_pc_pub.publish(ros_pc_out_msg)
 
           if pc_saving_is_enabled is True or pc_snapshot_enabled is True:
-            self.save_pc2file('pointcloud',o3d_pc,ros_timestamp)
+            self.save_pc2file('pointcloud',o3d_pc,current_time)
             
           render_enable = rospy.get_param('~pc_app/render/render_enable', self.init_render_enable)
 	  
@@ -982,7 +979,7 @@ class NepiPointcloudApp(object):
             else:
               self.img_renderer = nepi_pc.add_img_renderer_geometry(o3d_pc,self.img_renderer, self.img_renderer_mtl)
               o3d_img = nepi_pc.render_img(self.img_renderer,cam_view,cam_pos,cam_rot)
-              ros_img_msg = nepi_pc.o3dimg_to_rosimg(o3d_img, stamp=ros_timestamp, frame_id=ros_frame_id)
+              ros_img_msg = nepi_pc.o3dimg_to_rosimg(o3d_img, stamp=current_time, frame_id=ros_frame_id)
               self.img_renderer = nepi_pc.remove_img_renderer_geometry(self.img_renderer)
             self.last_img_width = img_width
             self.last_img_height = img_height
@@ -998,7 +995,7 @@ class NepiPointcloudApp(object):
 
               if img_saving_is_enabled is True or img_snapshot_enabled is True:
                 cv2_img = nepi_img.rosimg_to_cv2img(ros_img_msg)
-                self.save_img2file('pointcloud_image',cv2_img,ros_timestamp)
+                self.save_img2file('pointcloud_image',cv2_img,current_time)
           
       else: # Data Empty
           rospy.sleep(0.1)
