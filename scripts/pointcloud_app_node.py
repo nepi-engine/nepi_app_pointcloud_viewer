@@ -837,7 +837,7 @@ class NepiPointcloudApp(object):
         ros_timestamp_pr = eval('self.' + topic_puid + '_timestamp')
         primary_pc_frame = eval('self.' + topic_puid + '_frame')
         if ros_timestamp_pr is not None:
-          pc_age =(current_time.to_sec() - ros_timestamp_pr())
+          pc_age =(current_time.to_sec() - ros_timestamp_pr.to_sec())
           if pc_age <= age_filter_s:
             o3d_ppc = eval('self.' + topic_puid + '_pc')
             if o3d_ppc is not None:
@@ -870,7 +870,7 @@ class NepiPointcloudApp(object):
             if ros_timestamp_add is not None:
               #pc_age = abs(current_time - ros_timestamp)
               #pc_age = pc_age.to_sec()
-              pc_age =(current_time.to_sec() - ros_timestamp_add())
+              pc_age =(current_time.to_sec() - ros_timestamp_add.to_sec())
               if o3d_pc_add is not None:
                 if pc_age <= age_filter_s:
                   if combine_option == 'Add':
