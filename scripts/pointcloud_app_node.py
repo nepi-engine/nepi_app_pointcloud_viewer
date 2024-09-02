@@ -73,7 +73,8 @@ Factory_Combine_Option = 'Add'
 Factory_Frame_3d = 'nepi_center_frame'
 Factory_Age_Filter_S = 10.0
 
-Factory_Clip_Range_Enabled = True
+Factory_Clip_Enabled = True
+Factory_Clip_Selection = 'Range'
 Factory_Clip_Min_Range_M = 0
 Factory_Clip_Max_Range_M = 20
 Factory_Voxel_DownSample_Size = 0.0 # Zero value skips process
@@ -119,6 +120,8 @@ class NepiPointcloudApp(object):
   bounding_box3d_msg = BoundingBox3D()
   bounding_box3d_sub = None
 
+  clip_options = ['Range','X','Y','Z']
+
   last_img_width = 0
   last_img_height = 0
   last_fov = 0
@@ -148,7 +151,8 @@ class NepiPointcloudApp(object):
     rospy.set_param('~pc_app/transforms_dict', dict())
     rospy.set_param('~pc_app/combine_option', Factory_Combine_Option)
     
-    rospy.set_param('~pc_app/process/clip_range_enabled', Factory_Clip_Range_Enabled)
+    rospy.set_param('~pc_app/process/clip_enabled', Factory_Clip_Enabled)
+    rospy.set_param('~pc_app/process/clip_selection', Factory_Clip_Selection)
     rospy.set_param('~pc_app/process/range_min_m',  Factory_Clip_Min_Range_M)
     rospy.set_param('~pc_app/process/range_max_m',  Factory_Clip_Max_Range_M)
     self.bounding_box3d_topic = "NONE"
@@ -278,7 +282,8 @@ class NepiPointcloudApp(object):
     self.resetProcessControls()
   
   def resetProcessControls(self,do_updates = True):
-    rospy.set_param('~pc_app/process/clip_range_enabled', self.init_proc_clip_range_enabled )
+    rospy.set_param('~pc_app/process/clip_enabled', self.init_proc_clip_enabled )
+    rospy.set_param('~pc_app/process/clip_selection', self.init_proc_clip_selection )
     rospy.set_param('~pc_app/process/range_min_m', self.init_proc_range_min_m)
     rospy.set_param('~pc_app/process/range_max_m', self.init_proc_range_max_m)
     self.bounding_box3d_topic = "NONE"
@@ -288,10 +293,17 @@ class NepiPointcloudApp(object):
     if do_updates:
       self.publish_process_status()
 
-  def rangeClipEnableCb(self,msg):
+  def clipEnableCb(self,msg):
     #rospy.loginfo(msg)
     new_enable = msg.data
-    rospy.set_param('~pc_app/process/clip_range_enabled', new_enable)
+    rospy.set_param('~pc_app/process/clip_enabled', new_enable)
+    self.publish_process_status()
+
+  def setClipSelectionCb(self,msg):
+    #rospy.loginfo(msg)
+    sel = msg.data
+    if sel in self.clip_options:
+      rospy.set_param('~pc_app/process/clip_selection', sel )
     self.publish_process_status()
 
   def setClipBoxTopicCb(self,msg):
@@ -509,7 +521,8 @@ class NepiPointcloudApp(object):
 
     # Pointcloud Process Setup ########################################################
     proc_reset_controls_sub = rospy.Subscriber("~process/reset_controls", Empty, self.resetProcessControlsCb, queue_size = 10)
-    proc_range_clip_sub = rospy.Subscriber('~process/set_clip_range_enable', Bool, self.rangeClipEnableCb, queue_size = 10)
+    proc_range_clip_sub = rospy.Subscriber('~process/set_clip_enable', Bool, self.clipEnableCb, queue_size = 10)
+    proc_set_clip_sel_topic_sub = rospy.Subscriber('~set_clip_selection', String, self.setClipSelectionCb, queue_size = 10)
     proc_range_meters_sub = rospy.Subscriber('~process/set_range_clip_m', RangeWindow, self.setRangeMetersCb, queue_size = 10)
     proc_set_clip_box_topic_sub = rospy.Subscriber('~set_clip_bounding_box3d_topic', String, self.setClipBoxTopicCb, queue_size = 10)
     proc_voxel_downsample_size_sub = rospy.Subscriber("~process/set_voxel_downsample_size", Float32, self.setVoxelSizeCb, queue_size = 10)
@@ -579,7 +592,8 @@ class NepiPointcloudApp(object):
       self.init_transforms_dict = rospy.get_param('~pc_app/transforms_dict',dict())
       self.init_combine_option = rospy.get_param('~pc_app/combine_option', Factory_Combine_Option)
     
-      self.init_proc_clip_range_enabled = rospy.get_param('~pc_app/process/clip_range_enabled', Factory_Clip_Range_Enabled)
+      self.init_proc_clip_enabled = rospy.get_param('~pc_app/process/clip_enabled', Factory_Clip_Enabled)
+      self.init_proc_clip_selection = rospy.get_param('~pc_app/process/clip_selection', Factory_Clip_Selection )
       self.init_proc_range_min_m = rospy.get_param('~pc_app/process/range_min_m',  Factory_Clip_Min_Range_M)
       self.init_proc_range_max_m = rospy.get_param('~pc_app/process/range_max_m',  Factory_Clip_Max_Range_M)
       self.init_proc_voxel_downsample_size = rospy.get_param('~pc_app/process/voxel_downsample_size',Factory_Voxel_DownSample_Size)
@@ -605,6 +619,7 @@ class NepiPointcloudApp(object):
 
   def resetParamServer(self,do_updates = True):
       rospy.set_param('~pc_app/selected_pointclouds', self.init_selected_pointclouds)
+      rospy.set_param('~pc_app/process/clip_selection', self.init_proc_clip_selection )
       rospy.set_param('~pc_app/age_filter_s',  self.init_age_filter_s)
       rospy.set_param('~pc_app/transforms_dict', self.init_transforms_dict)
       rospy.set_param('~pc_app/combine_option',  self.init_combine_option)
@@ -664,11 +679,13 @@ class NepiPointcloudApp(object):
   def publish_process_status(self):
     status_msg = PointcloudProcessStatus()
 
-    status_msg.range_clip_enabled = rospy.get_param('~pc_app/process/clip_range_enabled', self.init_proc_clip_range_enabled )
+    status_msg.clip_enabled = rospy.get_param('~pc_app/process/clip_enabled', self.init_proc_clip_enabled )
+    status_msg.clip_options = self.clip_options
+    status_msg.clip_selection = rospy.get_param('~pc_app/process/clip_selection', self.init_proc_clip_selection )
     range_meters = RangeWindow()
     range_meters.start_range =   rospy.get_param('~pc_app/process/range_min_m', self.init_proc_range_min_m)
     range_meters.stop_range =   rospy.get_param('~pc_app/process/range_max_m', self.init_proc_range_max_m)
-    status_msg.range_clip_meters = range_meters
+    status_msg.clip_meters = range_meters
 
     status_msg.clip_target_topic = self.bounding_box3d_topic
     
@@ -892,11 +909,12 @@ class NepiPointcloudApp(object):
 
         if self.pc_max_range_m != 0:
           # Process Combined Pointcloud
-          clip_enable = rospy.get_param('~pc_app/process/clip_range_enabled', self.init_proc_clip_range_enabled )
+          clip_enable = rospy.get_param('~pc_app/process/clip_enabled', self.init_proc_clip_enabled )
           if clip_enable:
             min_m = rospy.get_param('~pc_app/process/range_min_m', self.init_proc_range_min_m)
             max_m = rospy.get_param('~pc_app/process/range_max_m', self.init_proc_range_max_m)
-            o3d_pc = nepi_pc.range_clip_spherical(o3d_pc, min_m, max_m)
+            clip_function = self.getClipFunction()
+            o3d_pc = clip_function(o3d_pc, min_m, max_m)
 
           if self.bounding_box3d_topic != "NONE" and self.bounding_box3d_msg is not None:
             clip_box_msg = copy.deepcopy(self.bounding_box3d_msg)
@@ -1041,6 +1059,19 @@ class NepiPointcloudApp(object):
 
   #######################
   # Utility Funcitons
+
+
+  def getClipFunction(self):
+    sel = rospy.get_param('~pc_app/process/clip_selection', self.init_proc_clip_selection )
+    if sel == "X":
+      clip_function = nepi_pc.range_clip_x_axis
+    elif sel == "Y":
+      clip_function = nepi_pc.range_clip_y_axis
+    elif sel == "Z":
+      clip_function = nepi_pc.range_clip_z_axis
+    else: 
+      clip_function = nepi_pc.range_clip_spherical
+    return clip_function
 
   def getAvailableFrame3DList(self):
     frames_dict = yaml.safe_load(self.tf_buffer.all_frames_as_yaml())
