@@ -848,7 +848,7 @@ class NepiPointcloudApp(object):
                 for item in transform:
                   if item != 0:
                     all_zeros = False
-                if primary_pc_frame != "nepi_center_frame" and all_zeros == False:
+                if all_zeros == False:
                   o3d_pc = self.transformPointcloud(o3d_pc, transform)
               pc_add_count += 1
         eval('self.' + topic_puid + '_lock').release()
@@ -880,7 +880,7 @@ class NepiPointcloudApp(object):
                       for item in transform:
                         if item != 0:
                           all_zeros = False
-                      if pc_frame_add != "nepi_center_frame" and all_zeros == False:
+                      if all_zeros == False:
                         o3d_pc_add = self.transformPointcloud(o3d_pc_add, transform)
                     o3d_pc += o3d_pc_add
                     pc_add_count += 1
