@@ -75,7 +75,7 @@ Factory_Age_Filter_S = 10.0
 
 Factory_Clip_Enabled = True
 Factory_Clip_Selection = 'Range'
-Factory_Clip_Min_Range_M = 0
+Factory_Clip_Min_Range_M = -20
 Factory_Clip_Max_Range_M = 20
 Factory_Voxel_DownSample_Size = 0.0 # Zero value skips process
 Factory_Uniform_DownSample_K_Points = 0 # Zero value skips process
@@ -322,7 +322,7 @@ class NepiPointcloudApp(object):
     #rospy.loginfo(msg)
     range_min_m = msg.start_range
     range_max_m = msg.stop_range
-    if range_min_m < range_max_m and range_min_m >= 0:
+    if range_min_m < range_max_m:
       rospy.set_param('~pc_app/process/range_min_m', range_min_m)
       rospy.set_param('~pc_app/process/range_max_m', range_max_m)
     self.publish_process_status()
@@ -522,9 +522,9 @@ class NepiPointcloudApp(object):
     # Pointcloud Process Setup ########################################################
     proc_reset_controls_sub = rospy.Subscriber("~process/reset_controls", Empty, self.resetProcessControlsCb, queue_size = 10)
     proc_range_clip_sub = rospy.Subscriber('~process/set_clip_enable', Bool, self.clipEnableCb, queue_size = 10)
-    proc_set_clip_sel_topic_sub = rospy.Subscriber('~set_clip_selection', String, self.setClipSelectionCb, queue_size = 10)
+    proc_set_clip_sel_topic_sub = rospy.Subscriber('~process/set_clip_selection', String, self.setClipSelectionCb, queue_size = 10)
     proc_range_meters_sub = rospy.Subscriber('~process/set_range_clip_m', RangeWindow, self.setRangeMetersCb, queue_size = 10)
-    proc_set_clip_box_topic_sub = rospy.Subscriber('~set_clip_bounding_box3d_topic', String, self.setClipBoxTopicCb, queue_size = 10)
+    proc_set_clip_box_topic_sub = rospy.Subscriber('~process/set_clip_bounding_box3d_topic', String, self.setClipBoxTopicCb, queue_size = 10)
     proc_voxel_downsample_size_sub = rospy.Subscriber("~process/set_voxel_downsample_size", Float32, self.setVoxelSizeCb, queue_size = 10)
     proc_uniform_downsample_k_points_sub = rospy.Subscriber("~process/uniform_downsample_k_points", Int32, self.setUniformPointsCb, queue_size = 10) 
     proc_outlier_removal_num_neighbors_sub = rospy.Subscriber("~process/outlier_removal_num_neighbors", Int32, self.setOutlierNumCb, queue_size = 10)
@@ -913,7 +913,10 @@ class NepiPointcloudApp(object):
           if clip_enable:
             min_m = rospy.get_param('~pc_app/process/range_min_m', self.init_proc_range_min_m)
             max_m = rospy.get_param('~pc_app/process/range_max_m', self.init_proc_range_max_m)
-            clip_function = self.getClipFunction()
+            clip_process = rospy.get_param('~pc_app/process/clip_selection', self.init_proc_clip_selection )
+            if clip_process == 'Range' and min_m < 0:
+              min_m = 0
+            clip_function = self.getClipFunction(clip_process)
             o3d_pc = clip_function(o3d_pc, min_m, max_m)
 
           if self.bounding_box3d_topic != "NONE" and self.bounding_box3d_msg is not None:
@@ -1061,8 +1064,7 @@ class NepiPointcloudApp(object):
   # Utility Funcitons
 
 
-  def getClipFunction(self):
-    sel = rospy.get_param('~pc_app/process/clip_selection', self.init_proc_clip_selection )
+  def getClipFunction(self,sel):
     if sel == "X":
       clip_function = nepi_pc.range_clip_x_axis
     elif sel == "Y":
