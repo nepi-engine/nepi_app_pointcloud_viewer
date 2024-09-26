@@ -488,7 +488,9 @@ class NepiPointcloudApp(object):
   #######################
   ### Node Initialization
   def __init__(self):
-   
+    node_name = "app_pointcloud"
+    rospy.init_node(name=node_name)
+
     rospy.loginfo("PC_APP: Starting Initialization Processes")
     self.initParamServerValues(do_updates = False)
     self.resetParamServer(do_updates = False)
@@ -567,6 +569,7 @@ class NepiPointcloudApp(object):
 
     ## Initiation Complete
     rospy.loginfo("PC_APP: Initialization Complete")
+    rospy.spin()
 
 
   #######################
@@ -1140,15 +1143,8 @@ class NepiPointcloudApp(object):
 # Main
 #########################################
 if __name__ == '__main__':
-  node_name = "app_pointcloud"
-  rospy.init_node(name=node_name)
-  #Launch the node
-  rospy.loginfo("PC_APP: Launching node named: " + node_name)
-  node = NepiPointcloudApp()
-  #Set up node shutdown
-  rospy.on_shutdown(node.cleanup_actions)
-  # Spin forever (until object is detected)
-  rospy.spin()
+  NepiPointcloudApp()
+
 
 
 
