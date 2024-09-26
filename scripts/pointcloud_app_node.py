@@ -48,8 +48,8 @@ from cv_bridge import CvBridge
 from std_msgs.msg import UInt8, Empty, String, Bool, Float32, Int32
 from geometry_msgs.msg import Vector3, Transform, Quaternion 
 from nepi_ros_interfaces.msg import IDXStatus, RangeWindow, ImageSize, \
-  PointcloudSelectionStatus,PointcloudProcessStatus,PointcloudRenderStatus, \
   Frame3DTransform, Frame3DTransformUpdate, BoundingBox3D
+from nepi_app_pointcloud.msg import PointcloudSelectionStatus,PointcloudProcessStatus,PointcloudRenderStatus
 
 # For Testing 
 from std_msgs.msg import Header

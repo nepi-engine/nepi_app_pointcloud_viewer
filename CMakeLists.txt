@@ -16,10 +16,12 @@ project(nepi_app_pointcloud)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-sensor_msgs
-std_msgs
-geometry_msgs
-nepi_ros_interfaces
+   message_generation
+   sensor_msgs
+   std_msgs
+   geometry_msgs
+   nav_msgs
+   nepi_ros_interfaces
 )
 
 ## System dependencies are found with CMake's conventions
@@ -56,11 +58,11 @@ nepi_ros_interfaces
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+ add_message_files(FILES
+	PointcloudProcessStatus.msg
+	PointcloudSelectionStatus.msg
+	PointcloudRenderStatus.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -77,11 +79,14 @@ nepi_ros_interfaces
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs
-# )
-
+generate_messages(
+   DEPENDENCIES
+   std_msgs  # Or other packages containing msgs
+   sensor_msgs
+   geometry_msgs
+   nav_msgs
+   nepi_ros_interfaces
+)
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
 ################################################
@@ -112,9 +117,13 @@ nepi_ros_interfaces
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES pointcloud_app
-   CATKIN_DEPENDS sensor_msgs std_msgs geometry_msgs nepi_ros_interfaces
+   CATKIN_DEPENDS 
+   message_runtime
+   std_msgs 
+   sensor_msgs 
+   geometry_msgs
+   nav_msgs
+   nepi_ros_interfaces
 #  DEPENDS CATKIN_DEPENDS sensor_msgs nepi_ros_interfaces nepi_edge_sdk_base 
 )
 
