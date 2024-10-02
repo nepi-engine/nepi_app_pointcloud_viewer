@@ -57,6 +57,7 @@ from sensor_msgs.msg import PointField
 from sensor_msgs import point_cloud2
 
 from nepi_edge_sdk_base import nepi_ros
+from nepi_edge_sdk_base import nepi_msg
 from nepi_edge_sdk_base import nepi_pc 
 from nepi_edge_sdk_base import nepi_img 
 
@@ -137,361 +138,19 @@ class NepiPointcloudApp(object):
 
   view_img_pub = None
   acquiring = False
-###################
-## App Callbacks
-
-  def resetAppCb(self,msg):
-    self.resetApp()
-
-  def resetApp(self):
-    rospy.set_param('~pc_app/selected_pointclouds', [])
-    rospy.set_param('~pc_app/primary_pointcloud', "None")
-    rospy.set_param('~pc_app/age_filter_s', Factory_Age_Filter_S)
-    rospy.set_param('~pc_app/frame_3d', Factory_Frame_3d)
-    rospy.set_param('~pc_app/transforms_dict', dict())
-    rospy.set_param('~pc_app/combine_option', Factory_Combine_Option)
-    
-    rospy.set_param('~pc_app/process/clip_enabled', Factory_Clip_Enabled)
-    rospy.set_param('~pc_app/process/clip_selection', Factory_Clip_Selection)
-    rospy.set_param('~pc_app/process/range_min_m',  Factory_Clip_Min_Range_M)
-    rospy.set_param('~pc_app/process/range_max_m',  Factory_Clip_Max_Range_M)
-    self.bounding_box3d_topic = "NONE"
-    rospy.set_param('~pc_app/process/voxel_downsample_size',Factory_Voxel_DownSample_Size)
-    rospy.set_param('~pc_app/process/uniform_downsample_k_points',Factory_Uniform_DownSample_K_Points)
-    rospy.set_param('~pc_app/process/outlier_removal_num_neighbors',Factory_Outlier_Removal_Num_Neighbors)
-
-
-    rospy.set_param('~pc_app/render/image_width',  Factory_Image_Width)
-    rospy.set_param('~pc_app/render/image_height', Factory_Image_Height)
-    rospy.set_param('~pc_app/render/start_range_ratio',  Factory_Start_Range_Ratio)
-    rospy.set_param('~pc_app/render/stop_range_ratio', Factory_Stop_Range_Ratio)
-    rospy.set_param('~pc_app/render/zoom_ratio', Factory_Zoom_Ratio)
-    rospy.set_param('~pc_app/render/rotate_ratio', Factory_Rotate_Ratio)
-    rospy.set_param('~pc_app/render/tilt_ratio', Factory_Tilt_Ratio)
-    rospy.set_param('~pc_app/render/cam_fov', Factory_Cam_FOV)
-    rospy.set_param('~pc_app/render/cam_view', Factory_Cam_View)
-    rospy.set_param('~pc_app/render/cam_pos', Factory_Cam_Pos)
-    rospy.set_param('~pc_app/render/cam_rot', Factory_Cam_Rot)
-    rospy.set_param('~pc_app/render/render_enable', Factory_Render_Enable)
-   
-    self.publish_selection_status()
-    self.publish_process_status()
-    self.publish_render_status()
-
-  ###################
-  ## Selection Callbacks
-
-  def resetSelectionControlsCb(self,msg):
-    self.resetSelectionControls()
-  
-  def resetSelectionControls(self,do_updates = True):
-    #rospy.set_param('~pc_app/selected_pointclouds', self.init_selected_pointclouds)
-    #rospy.set_param('~pc_app/primary_pointcloud', self.init_primary_pointcloud)
-    rospy.set_param('~pc_app/selected_pointclouds', [])
-    rospy.set_param('~pc_app/primary_pointcloud', "None")
-    # Fix for now
-    rospy.set_param('~pc_app/age_filter_s', self.init_age_filter_s)
-    rospy.set_param('~pc_app/transforms_dict', self.init_transforms_dict)
-    rospy.set_param('~pc_app/combine_option', self.init_combine_option)
-    if do_updates:
-      self.publish_process_status()
-
-  def addPointcloudCb(self,msg):
-    ##rospy.loginfo(msg)
-    pc_topic = msg.data
-    pc_topics = rospy.get_param('~pc_app/selected_pointclouds',self.init_selected_pointclouds)
-    add_topic = False
-    if nepi_ros.check_for_topic(pc_topic):
-      if pc_topic not in pc_topics:
-        add_topic = True
-      if add_topic:
-        rospy.loginfo("PC_APP: Adding Pointcloud topic to registered topics: " + pc_topic)
-        pc_topics.append(pc_topic)
-    rospy.set_param('~pc_app/selected_pointclouds',pc_topics)
-    self.publish_selection_status()
-
-  def removePointcloudCb(self,msg):
-    ##rospy.loginfo(msg)
-    pc_topic = msg.data
-    pc_topics = rospy.get_param('~pc_app/selected_pointclouds',self.init_selected_pointclouds)
-    remove_topic = False
-    if pc_topic in pc_topics:
-      remove_topic = True
-    if remove_topic:
-      rospy.loginfo("PC_APP: Removing Pointcloud topic from registered topics: " + pc_topic)
-      pc_topics.remove(pc_topic)
-    rospy.set_param('~pc_app/selected_pointclouds',pc_topics)
-    self.publish_selection_status()
-
-  def setPrimaryPointcloudCb(self,msg):
-    ##rospy.loginfo(msg)
-    pc_topic = msg.data
-    pc_topics = rospy.get_param('~~pc_app/selected_pointclouds',self.init_primary_pointcloud)
-    if pc_topic in pc_topics:
-      rospy.set_param('~pc_app/primary_pointcloud',pc_topic)
-    else:
-      rospy.loginfo("PC_APP: Ignoring Set Primary Pointcloud as it is not in selected list")
-    self.publish_selection_status()
-
-  def setAgeFilterCb(self,msg):
-    #rospy.loginfo(msg)
-    val = msg.data
-    if val >= 0:
-      rospy.set_param('~pc_app/age_filter_s',val)
-    self.publish_selection_status()
-
-
-  def addTransformCb(self,msg):
-    #rospy.loginfo(msg)
-    self.addTransformToDict(msg)
-    self.publish_selection_status()
-
-  def updateTransformCb(self,msg):
-    #rospy.loginfo(msg)
-    self.addTransformToDict(msg)
-    self.publish_selection_status()
-
-  def removeTransformCb(self,msg):
-    #rospy.loginfo(msg)
-    topic_namespace = msg.data
-    self.removeTransformFromDict(topic_namespace)
-    self.publish_selection_status()
-
-  def removePointcloudCb(self,msg):
-    #rospy.loginfo(msg)
-    pc_topic = msg.data
-    pc_topics = rospy.get_param('~pc_app/selected_pointclouds',self.init_selected_pointclouds)
-    if pc_topic in pc_topics:
-      pc_topics.remove(pc_topic)
-    rospy.set_param('~pc_app/selected_pointclouds',pc_topics)
-    self.publish_selection_status()   
-
-  def setCombineOptionCb(self, msg):
-      #rospy.loginfo(msg)
-      combine_option = msg.data
-      if combine_option in self.combine_options:
-        rospy.set_param('~pc_app/combine_option', combine_option)
-      else:
-        rospy.loginfo('Pointcloud combine option: ' + combine_option + ' not valid option')
-      self.publish_selection_status()
-      
-
-  ###################
-  ## Process Callbacks
-  def resetProcessControlsCb(self,msg):
-    self.resetProcessControls()
-  
-  def resetProcessControls(self,do_updates = True):
-    rospy.set_param('~pc_app/process/clip_enabled', self.init_proc_clip_enabled )
-    rospy.set_param('~pc_app/process/clip_selection', self.init_proc_clip_selection )
-    rospy.set_param('~pc_app/process/range_min_m', self.init_proc_range_min_m)
-    rospy.set_param('~pc_app/process/range_max_m', self.init_proc_range_max_m)
-    self.bounding_box3d_topic = "NONE"
-    rospy.set_param('~pc_app/process/voxel_downsample_size',self.init_proc_voxel_downsample_size)
-    rospy.set_param('~pc_app/process/uniform_downsample_k_points',self.init_proc_uniform_downsample_k_points)
-    rospy.set_param('~pc_app/process/outlier_removal_num_neighbors',self.init_proc_outlier_removal_num_neighbors)   
-    if do_updates:
-      self.publish_process_status()
-
-  def clipEnableCb(self,msg):
-    #rospy.loginfo(msg)
-    new_enable = msg.data
-    rospy.set_param('~pc_app/process/clip_enabled', new_enable)
-    self.publish_process_status()
-
-  def setClipSelectionCb(self,msg):
-    #rospy.loginfo(msg)
-    sel = msg.data
-    if sel in self.clip_options:
-      rospy.set_param('~pc_app/process/clip_selection', sel )
-    self.publish_process_status()
-
-  def setClipBoxTopicCb(self,msg):
-    #rospy.loginfo(msg)
-    self.bounding_box3d_topic = msg.data
-    topic = msg.data
-    if topic != self.bounding_box3d_topic and self.bounding_box3d_sub is not None:
-      self.bounding_box3d_sub.Unregister()
-      self.bounding_box3d_sub = None
-    if topic != "NONE":
-      self.bounding_box3d_sub = rospy.Subscriber('~set_clip_target_topic', String, self.setClipTargetTopicCb, queue_size = 10)
-    self.bounding_box3d_msg = None
-    self.publish_process_status()
-
-  def setRangeMetersCb(self,msg):
-    #rospy.loginfo(msg)
-    range_min_m = msg.start_range
-    range_max_m = msg.stop_range
-    if range_min_m < range_max_m:
-      rospy.set_param('~pc_app/process/range_min_m', range_min_m)
-      rospy.set_param('~pc_app/process/range_max_m', range_max_m)
-    self.publish_process_status()
-
-  def setVoxelSizeCb(self,msg):
-    #rospy.loginfo(msg)
-    val = msg.data
-    if val >= 0:
-      rospy.set_param('~pc_app/process/voxel_downsample_size',val)
-    self.publish_process_status()
-
-  def setUniformPointsCb(self,msg):
-    #rospy.loginfo(msg)
-    val = msg.data
-    if val >= 0:
-      rospy.set_param('~pc_app/process/uniform_downsample_k_points',val)
-    self.publish_process_status()
-
-  def setOutlierNumCb(self,msg):
-    #rospy.loginfo(msg)
-    val = msg.data
-    if val >= 0:
-      rospy.set_param('~pc_app/process/outlier_removal_num_neighbors',val)
-    self.publish_process_status()
-
-  def setFrame3dCb(self, msg):
-    #rospy.loginfo(msg)
-    frame_3d = msg.data
-    frame3d_list = self.frame3d_list
-    if frame_3d in frame3d_list:
-      rospy.set_param('~pc_app/frame_3d',frame_3d)
-    self.publish_process_status()
-
-###################
-## Render Callbacks
-
-  def resetRenderControlsCb(self,msg):
-    self.resetRenderControls()
-
-  def resetRenderControls(self,do_updates = True):
-    rospy.set_param('~pc_app/render/image_width',  self.init_image_width)
-    rospy.set_param('~pc_app/render/image_height', self.init_image_height)
-    rospy.set_param('~pc_app/render/start_range_ratio', self.init_view_start_range_ratio)
-    rospy.set_param('~pc_app/render/stop_range_ratio', self.init_view_stop_range_ratio)
-    rospy.set_param('~pc_app/render/zoom_ratio',self.init_view_zoom_ratio)
-    rospy.set_param('~pc_app/render/rotate_ratio',self.init_view_rotate_ratio)
-    rospy.set_param('~pc_app/render/tilt_ratio',self.init_view_tilt_ratio)
-    rospy.set_param('~pc_app/render/cam_fov', self.init_view_cam_fov)
-    rospy.set_param('~pc_app/render/cam_view',self.init_view_cam_view)
-    rospy.set_param('~pc_app/render/cam_pos',self.init_view_cam_pos)
-    rospy.set_param('~pc_app/render/cam_rot',self.init_view_cam_rot)
-    rospy.set_param('~pc_app/render/render_enable', self.init_render_enable)
-    
-    if do_updates:
-      self.publish_render_status()
-
-
-  def setImageSizeCb(self,msg):
-    #rospy.loginfo(msg)
-    width = msg.width
-    height = msg.height
-    if width > 100 and width < 5000 and height > 100 and height < 5000:
-      rospy.set_param('~pc_app/render/image_width',  width)
-      rospy.set_param('~pc_app/render/image_height', height)
-    self.publish_render_status()
-
-  def setImageSizeIndCb(self,msg):
-    #rospy.loginfo(msg)
-    index = msg.data
-    if index <= len(STANDARD_IMAGE_SIZES):
-      size_str = STANDARD_IMAGE_SIZES[index]
-      size__split = size_str.split(" ")
-      width = float(size__split[0])
-      height = float(size_split[2])
-      if width > 100 and width < 5000 and height > 100 and height < 5000:
-        rospy.set_param('~pc_app/render/image_width',  width)
-        rospy.set_param('~pc_app/render/image_height', height)
-    self.publish_render_status()
-
-  def setZoomRatioCb(self,msg):
-    #rospy.loginfo(msg)
-    new_val = msg.data
-    if new_val >= 0 and new_val <= 1 :
-      rospy.set_param('~pc_app/render/zoom_ratio',new_val)
-    self.publish_render_status()
-
-  def setZoomRatioCb(self,msg):
-    #rospy.loginfo(msg)
-    new_val = msg.data
-    if new_val >= 0 and new_val <= 1 :
-      rospy.set_param('~pc_app/render/zoom_ratio',new_val)
-    self.publish_render_status()
-
-  def setRotateRatioCb(self,msg):
-    #rospy.loginfo(msg)
-    new_val = msg.data
-    if new_val >= 0 and new_val <= 1 :
-      rospy.set_param('~pc_app/render/rotate_ratio',new_val)
-    self.publish_render_status()
-
-  def setTiltRatioCb(self,msg):
-    #rospy.loginfo(msg)
-    new_val = msg.data
-    if new_val >= 0 and new_val <= 1 :
-      rospy.set_param('~pc_app/render/tilt_ratio',new_val)
-    self.publish_render_status()
-
-  def setCamFovCb(self,msg):
-    #rospy.loginfo(msg)
-    new_val = msg.data
-    if new_val > 100:
-      new_val = 100
-    if new_val < 30:
-      new_val = 30
-    rospy.set_param('~pc_app/render/cam_fov',new_val)
-    self.publish_render_status()
-
-  def setCamViewCb(self,msg):
-    #rospy.loginfo(msg)
-    new_array = []
-    new_array.append(msg.x)
-    new_array.append(msg.y)
-    new_array.append(msg.z)
-    rospy.set_param('~pc_app/render/cam_view',new_array)
-    self.publish_render_status()
-
-  def setCamPositionCb(self,msg):
-    #rospy.loginfo(msg)
-    new_array = []
-    new_array.append(msg.x)
-    new_array.append(msg.y)
-    new_array.append(msg.z)
-    rospy.set_param('~pc_app/render/cam_pos',new_array)
-    self.publish_render_status()
-
-  def setCamRotationCb(self,msg):
-    #rospy.loginfo(msg)
-    new_array = []
-    new_array.append(msg.x)
-    new_array.append(msg.y)
-    new_array.append(msg.z)
-    rospy.set_param('~pc_app/render/cam_rot',new_array)
-    self.publish_render_status()
-  
-  def setRenderEnableCb(self,msg):
-    render_enable = msg.data
-    rospy.set_param('~pc_app/render/render_enable', render_enable)
-    self.publish_render_status()
-
-  def setRangeRatiosCb(self,msg):
-    #rospy.loginfo(msg)
-    min_ratio = msg.start_range
-    max_ratio = msg.stop_range
-    if min_ratio < max_ratio and min_ratio >= 0 and max_ratio <= 1:
-      rospy.set_param('~pc_app/render/start_range_ratio', min_ratio)
-      rospy.set_param('~pc_app/render/stop_range_ratio', max_ratio)
-    self.publish_render_status()
-
-
-
 
 
   #######################
   ### Node Initialization
+  DEFAULT_NODE_NAME = "app_pointcloud" # Can be overwitten by luanch command
   def __init__(self):
-    node_name = "app_pointcloud"
-    rospy.init_node(name=node_name)
-
-    rospy.loginfo("PC_APP: Starting Initialization Processes")
+    #### APP NODE INIT SETUP ####
+    nepi_ros.init_node(name= self.DEFAULT_NODE_NAME)
+    self.node_name = nepi_ros.get_node_name()
+    self.base_namespace = nepi_ros.get_base_namespace()
+    nepi_msg.createMsgPublishers(self)
+    nepi_msg.publishMsgInfo(self,"Starting Initialization Processes")
+    ##############################
     self.initParamServerValues(do_updates = False)
     self.resetParamServer(do_updates = False)
    
@@ -564,12 +223,360 @@ class NepiPointcloudApp(object):
 
 
     ## Start Pointcloud Subscriber Update Process
-    rospy.Timer(rospy.Duration(self.update_pointcloud_subs_interval_sec), self.updatePointcloudSubsThread)
-    rospy.Timer(rospy.Duration(self.update_data_products_interval_sec), self.updateDataProductsThread)
+    nepi_ros.timer(nepi_ros.duration(self.update_pointcloud_subs_interval_sec), self.updatePointcloudSubsThread)
+    nepi_ros.timer(nepi_ros.duration(self.update_data_products_interval_sec), self.updateDataProductsThread)
 
     ## Initiation Complete
-    rospy.loginfo("PC_APP: Initialization Complete")
-    rospy.spin()
+    nepi_msg.publishMsgInfo(self,"Initialization Complete")
+    nepi_ros.spin()
+
+
+
+
+###################
+## App Callbacks
+
+  def resetAppCb(self,msg):
+    self.resetApp()
+
+  def resetApp(self):
+    nepi_ros.set_param(self,'~selected_pointclouds', [])
+    nepi_ros.set_param(self,'~primary_pointcloud', "None")
+    nepi_ros.set_param(self,'~age_filter_s', Factory_Age_Filter_S)
+    nepi_ros.set_param(self,'~frame_3d', Factory_Frame_3d)
+    nepi_ros.set_param(self,'~transforms_dict', dict())
+    nepi_ros.set_param(self,'~combine_option', Factory_Combine_Option)
+    
+    nepi_ros.set_param(self,'~process/clip_enabled', Factory_Clip_Enabled)
+    nepi_ros.set_param(self,'~process/clip_selection', Factory_Clip_Selection)
+    nepi_ros.set_param(self,'~process/range_min_m',  Factory_Clip_Min_Range_M)
+    nepi_ros.set_param(self,'~process/range_max_m',  Factory_Clip_Max_Range_M)
+    self.bounding_box3d_topic = "NONE"
+    nepi_ros.set_param(self,'~process/voxel_downsample_size',Factory_Voxel_DownSample_Size)
+    nepi_ros.set_param(self,'~process/uniform_downsample_k_points',Factory_Uniform_DownSample_K_Points)
+    nepi_ros.set_param(self,'~process/outlier_removal_num_neighbors',Factory_Outlier_Removal_Num_Neighbors)
+
+
+    nepi_ros.set_param(self,'~render/image_width',  Factory_Image_Width)
+    nepi_ros.set_param(self,'~render/image_height', Factory_Image_Height)
+    nepi_ros.set_param(self,'~render/start_range_ratio',  Factory_Start_Range_Ratio)
+    nepi_ros.set_param(self,'~render/stop_range_ratio', Factory_Stop_Range_Ratio)
+    nepi_ros.set_param(self,'~render/zoom_ratio', Factory_Zoom_Ratio)
+    nepi_ros.set_param(self,'~render/rotate_ratio', Factory_Rotate_Ratio)
+    nepi_ros.set_param(self,'~render/tilt_ratio', Factory_Tilt_Ratio)
+    nepi_ros.set_param(self,'~render/cam_fov', Factory_Cam_FOV)
+    nepi_ros.set_param(self,'~render/cam_view', Factory_Cam_View)
+    nepi_ros.set_param(self,'~render/cam_pos', Factory_Cam_Pos)
+    nepi_ros.set_param(self,'~render/cam_rot', Factory_Cam_Rot)
+    nepi_ros.set_param(self,'~render/render_enable', Factory_Render_Enable)
+   
+    self.publish_selection_status()
+    self.publish_process_status()
+    self.publish_render_status()
+
+  ###################
+  ## Selection Callbacks
+
+  def resetSelectionControlsCb(self,msg):
+    self.resetSelectionControls()
+  
+  def resetSelectionControls(self,do_updates = True):
+    #nepi_ros.set_param(self,'~selected_pointclouds', self.init_selected_pointclouds)
+    #nepi_ros.set_param(self,'~primary_pointcloud', self.init_primary_pointcloud)
+    nepi_ros.set_param(self,'~selected_pointclouds', [])
+    nepi_ros.set_param(self,'~primary_pointcloud', "None")
+    # Fix for now
+    nepi_ros.set_param(self,'~age_filter_s', self.init_age_filter_s)
+    nepi_ros.set_param(self,'~transforms_dict', self.init_transforms_dict)
+    nepi_ros.set_param(self,'~combine_option', self.init_combine_option)
+    if do_updates:
+      self.publish_process_status()
+
+  def addPointcloudCb(self,msg):
+    ##nepi_msg.publishMsgInfo(self,str(msg))
+    pc_topic = msg.data
+    pc_topics = nepi_ros.get_param(self,'~selected_pointclouds',self.init_selected_pointclouds)
+    add_topic = False
+    if nepi_ros.check_for_topic(pc_topic):
+      if pc_topic not in pc_topics:
+        add_topic = True
+      if add_topic:
+        nepi_msg.publishMsgInfo(self,"Adding Pointcloud topic to registered topics: " + pc_topic)
+        pc_topics.append(pc_topic)
+    nepi_ros.set_param(self,'~selected_pointclouds',pc_topics)
+    self.publish_selection_status()
+
+  def removePointcloudCb(self,msg):
+    ##nepi_msg.publishMsgInfo(self,str(msg))
+    pc_topic = msg.data
+    pc_topics = nepi_ros.get_param(self,'~selected_pointclouds',self.init_selected_pointclouds)
+    remove_topic = False
+    if pc_topic in pc_topics:
+      remove_topic = True
+    if remove_topic:
+      nepi_msg.publishMsgInfo(self,"Removing Pointcloud topic from registered topics: " + pc_topic)
+      pc_topics.remove(pc_topic)
+    nepi_ros.set_param(self,'~selected_pointclouds',pc_topics)
+    self.publish_selection_status()
+
+  def setPrimaryPointcloudCb(self,msg):
+    ##nepi_msg.publishMsgInfo(self,str(msg))
+    pc_topic = msg.data
+    pc_topics = nepi_ros.get_param(self,'~~pc_app/selected_pointclouds',self.init_primary_pointcloud)
+    if pc_topic in pc_topics:
+      nepi_ros.set_param(self,'~primary_pointcloud',pc_topic)
+    else:
+      nepi_msg.publishMsgInfo(self,"Ignoring Set Primary Pointcloud as it is not in selected list")
+    self.publish_selection_status()
+
+  def setAgeFilterCb(self,msg):
+    #nepi_msg.publishMsgInfo(self,str(msg))
+    val = msg.data
+    if val >= 0:
+      nepi_ros.set_param(self,'~age_filter_s',val)
+    self.publish_selection_status()
+
+
+  def addTransformCb(self,msg):
+    #nepi_msg.publishMsgInfo(self,str(msg))
+    self.addTransformToDict(msg)
+    self.publish_selection_status()
+
+  def updateTransformCb(self,msg):
+    #nepi_msg.publishMsgInfo(self,str(msg))
+    self.addTransformToDict(msg)
+    self.publish_selection_status()
+
+  def removeTransformCb(self,msg):
+    #nepi_msg.publishMsgInfo(self,str(msg))
+    topic_namespace = msg.data
+    self.removeTransformFromDict(topic_namespace)
+    self.publish_selection_status()
+
+  def removePointcloudCb(self,msg):
+    #nepi_msg.publishMsgInfo(self,str(msg))
+    pc_topic = msg.data
+    pc_topics = nepi_ros.get_param(self,'~selected_pointclouds',self.init_selected_pointclouds)
+    if pc_topic in pc_topics:
+      pc_topics.remove(pc_topic)
+    nepi_ros.set_param(self,'~selected_pointclouds',pc_topics)
+    self.publish_selection_status()   
+
+  def setCombineOptionCb(self, msg):
+      #nepi_msg.publishMsgInfo(self,str(msg))
+      combine_option = msg.data
+      if combine_option in self.combine_options:
+        nepi_ros.set_param(self,'~combine_option', combine_option)
+      else:
+        nepi_msg.publishMsgInfo(self,'Pointcloud combine option: ' + combine_option + ' not valid option')
+      self.publish_selection_status()
+      
+
+  ###################
+  ## Process Callbacks
+  def resetProcessControlsCb(self,msg):
+    self.resetProcessControls()
+  
+  def resetProcessControls(self,do_updates = True):
+    nepi_ros.set_param(self,'~process/clip_enabled', self.init_proc_clip_enabled )
+    nepi_ros.set_param(self,'~process/clip_selection', self.init_proc_clip_selection )
+    nepi_ros.set_param(self,'~process/range_min_m', self.init_proc_range_min_m)
+    nepi_ros.set_param(self,'~process/range_max_m', self.init_proc_range_max_m)
+    self.bounding_box3d_topic = "NONE"
+    nepi_ros.set_param(self,'~process/voxel_downsample_size',self.init_proc_voxel_downsample_size)
+    nepi_ros.set_param(self,'~process/uniform_downsample_k_points',self.init_proc_uniform_downsample_k_points)
+    nepi_ros.set_param(self,'~process/outlier_removal_num_neighbors',self.init_proc_outlier_removal_num_neighbors)   
+    if do_updates:
+      self.publish_process_status()
+
+  def clipEnableCb(self,msg):
+    #nepi_msg.publishMsgInfo(self,str(msg))
+    new_enable = msg.data
+    nepi_ros.set_param(self,'~process/clip_enabled', new_enable)
+    self.publish_process_status()
+
+  def setClipSelectionCb(self,msg):
+    #nepi_msg.publishMsgInfo(self,str(msg))
+    sel = msg.data
+    if sel in self.clip_options:
+      nepi_ros.set_param(self,'~process/clip_selection', sel )
+    self.publish_process_status()
+
+  def setClipBoxTopicCb(self,msg):
+    #nepi_msg.publishMsgInfo(self,str(msg))
+    self.bounding_box3d_topic = msg.data
+    topic = msg.data
+    if topic != self.bounding_box3d_topic and self.bounding_box3d_sub is not None:
+      self.bounding_box3d_sub.Unregister()
+      self.bounding_box3d_sub = None
+    if topic != "NONE":
+      self.bounding_box3d_sub = rospy.Subscriber('~set_clip_target_topic', String, self.setClipTargetTopicCb, queue_size = 10)
+    self.bounding_box3d_msg = None
+    self.publish_process_status()
+
+  def setRangeMetersCb(self,msg):
+    #nepi_msg.publishMsgInfo(self,str(msg))
+    range_min_m = msg.start_range
+    range_max_m = msg.stop_range
+    if range_min_m < range_max_m:
+      nepi_ros.set_param(self,'~process/range_min_m', range_min_m)
+      nepi_ros.set_param(self,'~process/range_max_m', range_max_m)
+    self.publish_process_status()
+
+  def setVoxelSizeCb(self,msg):
+    #nepi_msg.publishMsgInfo(self,str(msg))
+    val = msg.data
+    if val >= 0:
+      nepi_ros.set_param(self,'~process/voxel_downsample_size',val)
+    self.publish_process_status()
+
+  def setUniformPointsCb(self,msg):
+    #nepi_msg.publishMsgInfo(self,str(msg))
+    val = msg.data
+    if val >= 0:
+      nepi_ros.set_param(self,'~process/uniform_downsample_k_points',val)
+    self.publish_process_status()
+
+  def setOutlierNumCb(self,msg):
+    #nepi_msg.publishMsgInfo(self,str(msg))
+    val = msg.data
+    if val >= 0:
+      nepi_ros.set_param(self,'~process/outlier_removal_num_neighbors',val)
+    self.publish_process_status()
+
+  def setFrame3dCb(self, msg):
+    #nepi_msg.publishMsgInfo(self,str(msg))
+    frame_3d = msg.data
+    frame3d_list = self.frame3d_list
+    if frame_3d in frame3d_list:
+      nepi_ros.set_param(self,'~frame_3d',frame_3d)
+    self.publish_process_status()
+
+###################
+## Render Callbacks
+
+  def resetRenderControlsCb(self,msg):
+    self.resetRenderControls()
+
+  def resetRenderControls(self,do_updates = True):
+    nepi_ros.set_param(self,'~render/image_width',  self.init_image_width)
+    nepi_ros.set_param(self,'~render/image_height', self.init_image_height)
+    nepi_ros.set_param(self,'~render/start_range_ratio', self.init_view_start_range_ratio)
+    nepi_ros.set_param(self,'~render/stop_range_ratio', self.init_view_stop_range_ratio)
+    nepi_ros.set_param(self,'~render/zoom_ratio',self.init_view_zoom_ratio)
+    nepi_ros.set_param(self,'~render/rotate_ratio',self.init_view_rotate_ratio)
+    nepi_ros.set_param(self,'~render/tilt_ratio',self.init_view_tilt_ratio)
+    nepi_ros.set_param(self,'~render/cam_fov', self.init_view_cam_fov)
+    nepi_ros.set_param(self,'~render/cam_view',self.init_view_cam_view)
+    nepi_ros.set_param(self,'~render/cam_pos',self.init_view_cam_pos)
+    nepi_ros.set_param(self,'~render/cam_rot',self.init_view_cam_rot)
+    nepi_ros.set_param(self,'~render/render_enable', self.init_render_enable)
+    
+    if do_updates:
+      self.publish_render_status()
+
+
+  def setImageSizeCb(self,msg):
+    #nepi_msg.publishMsgInfo(self,str(msg))
+    width = msg.width
+    height = msg.height
+    if width > 100 and width < 5000 and height > 100 and height < 5000:
+      nepi_ros.set_param(self,'~render/image_width',  width)
+      nepi_ros.set_param(self,'~render/image_height', height)
+    self.publish_render_status()
+
+  def setImageSizeIndCb(self,msg):
+    #nepi_msg.publishMsgInfo(self,str(msg))
+    index = msg.data
+    if index <= len(STANDARD_IMAGE_SIZES):
+      size_str = STANDARD_IMAGE_SIZES[index]
+      size__split = size_str.split(" ")
+      width = float(size__split[0])
+      height = float(size_split[2])
+      if width > 100 and width < 5000 and height > 100 and height < 5000:
+        nepi_ros.set_param(self,'~render/image_width',  width)
+        nepi_ros.set_param(self,'~render/image_height', height)
+    self.publish_render_status()
+
+  def setZoomRatioCb(self,msg):
+    #nepi_msg.publishMsgInfo(self,str(msg))
+    new_val = msg.data
+    if new_val >= 0 and new_val <= 1 :
+      nepi_ros.set_param(self,'~render/zoom_ratio',new_val)
+    self.publish_render_status()
+
+  def setZoomRatioCb(self,msg):
+    #nepi_msg.publishMsgInfo(self,str(msg))
+    new_val = msg.data
+    if new_val >= 0 and new_val <= 1 :
+      nepi_ros.set_param(self,'~render/zoom_ratio',new_val)
+    self.publish_render_status()
+
+  def setRotateRatioCb(self,msg):
+    #nepi_msg.publishMsgInfo(self,str(msg))
+    new_val = msg.data
+    if new_val >= 0 and new_val <= 1 :
+      nepi_ros.set_param(self,'~render/rotate_ratio',new_val)
+    self.publish_render_status()
+
+  def setTiltRatioCb(self,msg):
+    #nepi_msg.publishMsgInfo(self,str(msg))
+    new_val = msg.data
+    if new_val >= 0 and new_val <= 1 :
+      nepi_ros.set_param(self,'~render/tilt_ratio',new_val)
+    self.publish_render_status()
+
+  def setCamFovCb(self,msg):
+    #nepi_msg.publishMsgInfo(self,str(msg))
+    new_val = msg.data
+    if new_val > 100:
+      new_val = 100
+    if new_val < 30:
+      new_val = 30
+    nepi_ros.set_param(self,'~render/cam_fov',new_val)
+    self.publish_render_status()
+
+  def setCamViewCb(self,msg):
+    #nepi_msg.publishMsgInfo(self,str(msg))
+    new_array = []
+    new_array.append(msg.x)
+    new_array.append(msg.y)
+    new_array.append(msg.z)
+    nepi_ros.set_param(self,'~render/cam_view',new_array)
+    self.publish_render_status()
+
+  def setCamPositionCb(self,msg):
+    #nepi_msg.publishMsgInfo(self,str(msg))
+    new_array = []
+    new_array.append(msg.x)
+    new_array.append(msg.y)
+    new_array.append(msg.z)
+    nepi_ros.set_param(self,'~render/cam_pos',new_array)
+    self.publish_render_status()
+
+  def setCamRotationCb(self,msg):
+    #nepi_msg.publishMsgInfo(self,str(msg))
+    new_array = []
+    new_array.append(msg.x)
+    new_array.append(msg.y)
+    new_array.append(msg.z)
+    nepi_ros.set_param(self,'~render/cam_rot',new_array)
+    self.publish_render_status()
+  
+  def setRenderEnableCb(self,msg):
+    render_enable = msg.data
+    nepi_ros.set_param(self,'~render/render_enable', render_enable)
+    self.publish_render_status()
+
+  def setRangeRatiosCb(self,msg):
+    #nepi_msg.publishMsgInfo(self,str(msg))
+    min_ratio = msg.start_range
+    max_ratio = msg.stop_range
+    if min_ratio < max_ratio and min_ratio >= 0 and max_ratio <= 1:
+      nepi_ros.set_param(self,'~render/start_range_ratio', min_ratio)
+      nepi_ros.set_param(self,'~render/stop_range_ratio', max_ratio)
+    self.publish_render_status()
+
 
 
   #######################
@@ -582,50 +589,50 @@ class NepiPointcloudApp(object):
     pass # We only use the param server, no member variables to apply to param server
 
   def updateFromParamServer(self):
-    #rospy.logwarn("Debugging: param_dict = " + str(param_dict))
+    #nepi_msg.publishMsgWarn(self,("Debugging: param_dict = " + str(param_dict))
     #Run any functions that need updating on value change
     # Don't need to run any additional functions
     pass
 
   def initParamServerValues(self,do_updates = True):
-      rospy.loginfo("PC_APP: Reseting param values to init values")
-      self.init_selected_pointclouds = rospy.get_param('~pc_app/selected_pointclouds', [])
-      self.init_primary_pointcloud = rospy.get_param('~pc_app/primary_pointcloud', "None")
-      self.init_age_filter_s = rospy.get_param('~pc_app/age_filter_s', Factory_Age_Filter_S)
-      self.init_transforms_dict = rospy.get_param('~pc_app/transforms_dict',dict())
-      self.init_combine_option = rospy.get_param('~pc_app/combine_option', Factory_Combine_Option)
+      nepi_msg.publishMsgInfo(self,"Reseting param values to init values")
+      self.init_selected_pointclouds = nepi_ros.get_param(self,'~selected_pointclouds', [])
+      self.init_primary_pointcloud = nepi_ros.get_param(self,'~primary_pointcloud', "None")
+      self.init_age_filter_s = nepi_ros.get_param(self,'~age_filter_s', Factory_Age_Filter_S)
+      self.init_transforms_dict = nepi_ros.get_param(self,'~transforms_dict',dict())
+      self.init_combine_option = nepi_ros.get_param(self,'~combine_option', Factory_Combine_Option)
     
-      self.init_proc_clip_enabled = rospy.get_param('~pc_app/process/clip_enabled', Factory_Clip_Enabled)
-      self.init_proc_clip_selection = rospy.get_param('~pc_app/process/clip_selection', Factory_Clip_Selection )
-      self.init_proc_range_min_m = rospy.get_param('~pc_app/process/range_min_m',  Factory_Clip_Min_Range_M)
-      self.init_proc_range_max_m = rospy.get_param('~pc_app/process/range_max_m',  Factory_Clip_Max_Range_M)
-      self.init_proc_voxel_downsample_size = rospy.get_param('~pc_app/process/voxel_downsample_size',Factory_Voxel_DownSample_Size)
-      self.init_proc_uniform_downsample_k_points = rospy.get_param('~pc_app/process/uniform_downsample_k_points',Factory_Uniform_DownSample_K_Points)
-      self.init_proc_outlier_removal_num_neighbors = rospy.get_param('~pc_app/process/outlier_removal_num_neighbors',Factory_Outlier_Removal_Num_Neighbors)
-      self.init_proc_frame_3d = rospy.get_param('~pc_app/frame_3d', Factory_Frame_3d)
+      self.init_proc_clip_enabled = nepi_ros.get_param(self,'~process/clip_enabled', Factory_Clip_Enabled)
+      self.init_proc_clip_selection = nepi_ros.get_param(self,'~process/clip_selection', Factory_Clip_Selection )
+      self.init_proc_range_min_m = nepi_ros.get_param(self,'~process/range_min_m',  Factory_Clip_Min_Range_M)
+      self.init_proc_range_max_m = nepi_ros.get_param(self,'~process/range_max_m',  Factory_Clip_Max_Range_M)
+      self.init_proc_voxel_downsample_size = nepi_ros.get_param(self,'~process/voxel_downsample_size',Factory_Voxel_DownSample_Size)
+      self.init_proc_uniform_downsample_k_points = nepi_ros.get_param(self,'~process/uniform_downsample_k_points',Factory_Uniform_DownSample_K_Points)
+      self.init_proc_outlier_removal_num_neighbors = nepi_ros.get_param(self,'~process/outlier_removal_num_neighbors',Factory_Outlier_Removal_Num_Neighbors)
+      self.init_proc_frame_3d = nepi_ros.get_param(self,'~frame_3d', Factory_Frame_3d)
     
-      self.init_image_width = rospy.get_param('~pc_app/render/image_width',  Factory_Image_Width)
-      self.init_image_height = rospy.get_param('~pc_app/render/image_height', Factory_Image_Height)
-      self.init_view_start_range_ratio = rospy.get_param('~pc_app/render/start_range_ratio',  Factory_Start_Range_Ratio)
-      self.init_view_stop_range_ratio = rospy.get_param('~pc_app/render/stop_range_ratio', Factory_Stop_Range_Ratio)
-      self.init_view_zoom_ratio = rospy.get_param('~pc_app/render/zoom_ratio', Factory_Zoom_Ratio)
-      self.init_view_rotate_ratio = rospy.get_param('~pc_app/render/rotate_ratio', Factory_Rotate_Ratio)
-      self.init_view_tilt_ratio = rospy.get_param('~pc_app/render/tilt_ratio', Factory_Tilt_Ratio)
+      self.init_image_width = nepi_ros.get_param(self,'~render/image_width',  Factory_Image_Width)
+      self.init_image_height = nepi_ros.get_param(self,'~render/image_height', Factory_Image_Height)
+      self.init_view_start_range_ratio = nepi_ros.get_param(self,'~render/start_range_ratio',  Factory_Start_Range_Ratio)
+      self.init_view_stop_range_ratio = nepi_ros.get_param(self,'~render/stop_range_ratio', Factory_Stop_Range_Ratio)
+      self.init_view_zoom_ratio = nepi_ros.get_param(self,'~render/zoom_ratio', Factory_Zoom_Ratio)
+      self.init_view_rotate_ratio = nepi_ros.get_param(self,'~render/rotate_ratio', Factory_Rotate_Ratio)
+      self.init_view_tilt_ratio = nepi_ros.get_param(self,'~render/tilt_ratio', Factory_Tilt_Ratio)
 
-      self.init_view_cam_fov = rospy.get_param('~pc_app/render/cam_fov', Factory_Cam_FOV )
-      self.init_view_cam_view = rospy.get_param('~pc_app/render/cam_view', Factory_Cam_View)
-      self.init_view_cam_pos = rospy.get_param('~pc_app/render/cam_pos', Factory_Cam_Pos)
-      self.init_view_cam_rot = rospy.get_param('~pc_app/render/cam_rot', Factory_Cam_Rot)
-      self.init_render_enable = rospy.get_param('~pc_app/render/render_enable', Factory_Render_Enable)
+      self.init_view_cam_fov = nepi_ros.get_param(self,'~render/cam_fov', Factory_Cam_FOV )
+      self.init_view_cam_view = nepi_ros.get_param(self,'~render/cam_view', Factory_Cam_View)
+      self.init_view_cam_pos = nepi_ros.get_param(self,'~render/cam_pos', Factory_Cam_Pos)
+      self.init_view_cam_rot = nepi_ros.get_param(self,'~render/cam_rot', Factory_Cam_Rot)
+      self.init_render_enable = nepi_ros.get_param(self,'~render/render_enable', Factory_Render_Enable)
       
       self.resetParamServer(do_updates)
 
   def resetParamServer(self,do_updates = True):
-      rospy.set_param('~pc_app/selected_pointclouds', self.init_selected_pointclouds)
-      rospy.set_param('~pc_app/process/clip_selection', self.init_proc_clip_selection )
-      rospy.set_param('~pc_app/age_filter_s',  self.init_age_filter_s)
-      rospy.set_param('~pc_app/transforms_dict', self.init_transforms_dict)
-      rospy.set_param('~pc_app/combine_option',  self.init_combine_option)
+      nepi_ros.set_param(self,'~selected_pointclouds', self.init_selected_pointclouds)
+      nepi_ros.set_param(self,'~process/clip_selection', self.init_proc_clip_selection )
+      nepi_ros.set_param(self,'~age_filter_s',  self.init_age_filter_s)
+      nepi_ros.set_param(self,'~transforms_dict', self.init_transforms_dict)
+      nepi_ros.set_param(self,'~combine_option',  self.init_combine_option)
       self.resetSelectionControls(do_updates)
       self.resetProcessControls(do_updates)
       self.resetRenderControls(do_updates)
@@ -642,34 +649,34 @@ class NepiPointcloudApp(object):
   def publish_selection_status(self):
     status_msg = PointcloudSelectionStatus()
 
-    pointcloud_topic_list = rospy.get_param('~pc_app/selected_pointclouds',self.init_selected_pointclouds)
+    pointcloud_topic_list = nepi_ros.get_param(self,'~selected_pointclouds',self.init_selected_pointclouds)
     status_msg.selected_pointcloud_topics = str(pointcloud_topic_list)
 
-    primary_pointcloud = rospy.get_param('~pc_app/primary_pointcloud', self.init_primary_pointcloud)
+    primary_pointcloud = nepi_ros.get_param(self,'~primary_pointcloud', self.init_primary_pointcloud)
     if primary_pointcloud == "None" and len(pointcloud_topic_list) > 0:
       primary_pointcloud = pointcloud_topic_list[0]
     elif primary_pointcloud != "None" and len(pointcloud_topic_list) == 0:
       primary_pointcloud = "None"
-    rospy.set_param('~pc_app/primary_pointcloud', primary_pointcloud)
+    nepi_ros.set_param(self,'~primary_pointcloud', primary_pointcloud)
     status_msg.primary_pointcloud_topic = primary_pointcloud
     status_msg.publishing_pointcloud_img = self.view_img_pub is not None
 
-    age_filter_s = rospy.get_param('~pc_app/age_filter_s', self.init_age_filter_s)
+    age_filter_s = nepi_ros.get_param(self,'~age_filter_s', self.init_age_filter_s)
     status_msg.age_filter_s = age_filter_s
 
 
     status_msg.available_3d_frames = str(self.frame3d_list)
-    status_msg.output_3d_frame = rospy.get_param('~pc_app/frame_3d', self.init_proc_frame_3d) 
+    status_msg.output_3d_frame = nepi_ros.get_param(self,'~frame_3d', self.init_proc_frame_3d) 
 
-    transforms_dict = rospy.get_param('~pc_app/transforms_dict',self.init_transforms_dict)
+    transforms_dict = nepi_ros.get_param(self,'~transforms_dict',self.init_transforms_dict)
     for pc_topic in pointcloud_topic_list:
       if pc_topic not in transforms_dict.keys():
         transforms_dict[pc_topic] = ZERO_TRANSFORM
-    rospy.set_param('~pc_app/transforms_dict',transforms_dict)
+    nepi_ros.set_param(self,'~transforms_dict',transforms_dict)
     [status_msg.transforms_topic_list,status_msg.transforms_list] = self.getFrame3DTransformsMsg()
 
     status_msg.combine_options = str(self.combine_options)
-    status_msg.combine_option = rospy.get_param('~pc_app/combine_option', self.init_combine_option)
+    status_msg.combine_option = nepi_ros.get_param(self,'~combine_option', self.init_combine_option)
 
     range_meters = RangeWindow()
     range_meters.start_range =   self.pc_min_range_m
@@ -682,19 +689,19 @@ class NepiPointcloudApp(object):
   def publish_process_status(self):
     status_msg = PointcloudProcessStatus()
 
-    status_msg.clip_enabled = rospy.get_param('~pc_app/process/clip_enabled', self.init_proc_clip_enabled )
+    status_msg.clip_enabled = nepi_ros.get_param(self,'~process/clip_enabled', self.init_proc_clip_enabled )
     status_msg.clip_options = self.clip_options
-    status_msg.clip_selection = rospy.get_param('~pc_app/process/clip_selection', self.init_proc_clip_selection )
+    status_msg.clip_selection = nepi_ros.get_param(self,'~process/clip_selection', self.init_proc_clip_selection )
     range_meters = RangeWindow()
-    range_meters.start_range =   rospy.get_param('~pc_app/process/range_min_m', self.init_proc_range_min_m)
-    range_meters.stop_range =   rospy.get_param('~pc_app/process/range_max_m', self.init_proc_range_max_m)
+    range_meters.start_range =   nepi_ros.get_param(self,'~process/range_min_m', self.init_proc_range_min_m)
+    range_meters.stop_range =   nepi_ros.get_param(self,'~process/range_max_m', self.init_proc_range_max_m)
     status_msg.clip_meters = range_meters
 
     status_msg.clip_target_topic = self.bounding_box3d_topic
     
-    status_msg.voxel_downsample_size_m = rospy.get_param('~pc_app/process/voxel_downsample_size',self.init_proc_voxel_downsample_size)
-    status_msg.uniform_downsample_points = rospy.get_param('~pc_app/process/uniform_downsample_k_points',self.init_proc_uniform_downsample_k_points)
-    status_msg.outlier_k_points = rospy.get_param('~pc_app/process/outlier_removal_num_neighbors',self.init_proc_outlier_removal_num_neighbors) 
+    status_msg.voxel_downsample_size_m = nepi_ros.get_param(self,'~process/voxel_downsample_size',self.init_proc_voxel_downsample_size)
+    status_msg.uniform_downsample_points = nepi_ros.get_param(self,'~process/uniform_downsample_k_points',self.init_proc_uniform_downsample_k_points)
+    status_msg.outlier_k_points = nepi_ros.get_param(self,'~process/outlier_removal_num_neighbors',self.init_proc_outlier_removal_num_neighbors) 
 
     self.proc_status_pub.publish(status_msg)
 
@@ -703,49 +710,49 @@ class NepiPointcloudApp(object):
 
     status_msg.standard_image_sizes = str(STANDARD_IMAGE_SIZES)
 
-    status_msg.image_width = rospy.get_param('~pc_app/render/image_width',  self.init_image_width)
-    status_msg.image_height = rospy.get_param('~pc_app/render/image_height', self.init_image_height)
+    status_msg.image_width = nepi_ros.get_param(self,'~render/image_width',  self.init_image_width)
+    status_msg.image_height = nepi_ros.get_param(self,'~render/image_height', self.init_image_height)
 
     range_meters = RangeWindow()
-    range_meters.start_range =  rospy.get_param('~pc_app/process/range_min_m', self.init_proc_range_min_m)
-    range_meters.stop_range =   rospy.get_param('~pc_app/process/range_max_m', self.init_proc_range_max_m)
+    range_meters.start_range =  nepi_ros.get_param(self,'~process/range_min_m', self.init_proc_range_min_m)
+    range_meters.stop_range =   nepi_ros.get_param(self,'~process/range_max_m', self.init_proc_range_max_m)
 
     status_msg.range_min_max_m = range_meters
 
     range_ratios = RangeWindow()
-    range_ratios.start_range =   rospy.get_param('~pc_app/render/start_range_ratio', self.init_view_start_range_ratio)
-    range_ratios.stop_range =   rospy.get_param('~pc_app/render/stop_range_ratio', self.init_view_stop_range_ratio)
+    range_ratios.start_range =   nepi_ros.get_param(self,'~render/start_range_ratio', self.init_view_start_range_ratio)
+    range_ratios.stop_range =   nepi_ros.get_param(self,'~render/stop_range_ratio', self.init_view_stop_range_ratio)
     status_msg.range_clip_ratios = range_ratios
 
-    status_msg.zoom_ratio = rospy.get_param('~pc_app/render/zoom_ratio',self.init_view_zoom_ratio)
-    status_msg.rotate_ratio = rospy.get_param('~pc_app/render/rotate_ratio',self.init_view_rotate_ratio)
-    status_msg.tilt_ratio = rospy.get_param('~pc_app/render/tilt_ratio',self.init_view_tilt_ratio)
+    status_msg.zoom_ratio = nepi_ros.get_param(self,'~render/zoom_ratio',self.init_view_zoom_ratio)
+    status_msg.rotate_ratio = nepi_ros.get_param(self,'~render/rotate_ratio',self.init_view_rotate_ratio)
+    status_msg.tilt_ratio = nepi_ros.get_param(self,'~render/tilt_ratio',self.init_view_tilt_ratio)
 
-    fov = rospy.get_param('~pc_app/render/cam_fov', self.init_view_cam_fov )
+    fov = nepi_ros.get_param(self,'~render/cam_fov', self.init_view_cam_fov )
     status_msg.camera_fov = fov
 
-    view = rospy.get_param('~pc_app/render/cam_view',self.init_view_cam_view)
+    view = nepi_ros.get_param(self,'~render/cam_view',self.init_view_cam_view)
     cam_view = Vector3()
     cam_view.x = view[0]
     cam_view.y = view[1]
     cam_view.z = view[2]
     status_msg.camera_view = cam_view
 
-    pos = rospy.get_param('~pc_app/render/cam_pos',self.init_view_cam_pos)
+    pos = nepi_ros.get_param(self,'~render/cam_pos',self.init_view_cam_pos)
     cam_pos = Vector3()
     cam_pos.x = pos[0]
     cam_pos.y = pos[1]
     cam_pos.z = pos[2]
     status_msg.camera_position = cam_pos
 
-    rot = rospy.get_param('~pc_app/render/cam_rot',self.init_view_cam_rot)
+    rot = nepi_ros.get_param(self,'~render/cam_rot',self.init_view_cam_rot)
     cam_rot = Vector3()
     cam_rot.x = rot[0]
     cam_rot.y = rot[1]
     cam_rot.z = rot[2]
     status_msg.camera_rotation = cam_rot
     
-    render_enable = rospy.get_param('~pc_app/render/render_enable',self.init_render_enable)
+    render_enable = nepi_ros.get_param(self,'~render/render_enable',self.init_render_enable)
     status_msg.render_enable = render_enable
 
     self.view_status_pub.publish(status_msg)
@@ -755,7 +762,7 @@ class NepiPointcloudApp(object):
 
   def updatePointcloudSubsThread(self,timer):
     # Subscribe to topic pointcloud topics if not subscribed
-    sel_topics = rospy.get_param('~pc_app/selected_pointclouds',self.init_selected_pointclouds)
+    sel_topics = nepi_ros.get_param(self,'~selected_pointclouds',self.init_selected_pointclouds)
     for sel_topic in sel_topics:
       if sel_topic != "" and sel_topic not in self.pc_subs_dict.keys():
         if nepi_ros.check_for_topic(sel_topic):
@@ -764,19 +771,17 @@ class NepiPointcloudApp(object):
           exec('self.' + topic_uid + '_timestamp = None')
           exec('self.' + topic_uid + '_frame = None')
           exec('self.' + topic_uid + '_lock = threading.Lock()')
-          rospy.loginfo("PC_APP: Subscribing to topic: " + sel_topic)
-          #rospy.loginfo("PC_APP: with topic_uid: " + topic_uid)
+          nepi_msg.publishMsgInfo(self,"Subscribing to topic: " + sel_topic)
+          #nepi_msg.publishMsgInfo(self,"with topic_uid: " + topic_uid)
           pc_sub = rospy.Subscriber(sel_topic, PointCloud2, lambda msg: self.pointcloudCb(msg, sel_topic), queue_size = 10)
           self.pc_subs_dict[sel_topic] = pc_sub
-          rospy.loginfo("PC_APP: Pointcloud: " + sel_topic + " registered")
-    #rospy.loginfo(self.pc_subs_dict.keys())
-    #rospy.loginfo(self.view_img_pub is None)
+          nepi_msg.publishMsgInfo(self,"Pointcloud: " + sel_topic + " registered")
     if len(list(self.pc_subs_dict.keys())) > 0 and self.view_img_pub is None:
-      rospy.loginfo("PC_APP: Setting up pointcloud_image pub")
+      nepi_msg.publishMsgInfo(self,"Setting up pointcloud_image pub")
       self.view_img_pub = rospy.Publisher("~pointcloud_image", Image, queue_size=1)
       time.sleep(1)
     elif len(list(self.pc_subs_dict.keys())) == 0 and self.view_img_pub is not None:
-      rospy.loginfo("PC_APP: Taking down pointcloud_image pub")
+      nepi_msg.publishMsgInfo(self,"Taking down pointcloud_image pub")
       self.view_img_pub.unregister()
       self.view_img_pub = None
       time.sleep(1)
@@ -786,12 +791,12 @@ class NepiPointcloudApp(object):
       if topic not in sel_topics:
           pc_sub = self.pc_subs_dict[topic]
           pc_sub.unregister()
-          rospy.loginfo("PC_APP: Pointcloud: " + topic + " unregistered")
+          nepi_msg.publishMsgInfo(self,"Pointcloud: " + topic + " unregistered")
           unreg_topic_list.append(topic) # Can't change dictionary while looping through dictionary
     for topic in unreg_topic_list: 
           self.pc_subs_dict.pop(topic)
     # Update primary pointcloud if needed
-    primary_pc = rospy.get_param('~pc_app/primary_pointcloud', self.init_primary_pointcloud)
+    primary_pc = nepi_ros.get_param(self,'~primary_pointcloud', self.init_primary_pointcloud)
     #print(self.pc_subs_dict.keys())
     if primary_pc not in self.pc_subs_dict.keys():
       if len(self.pc_subs_dict.keys()) > 0:
@@ -799,15 +804,15 @@ class NepiPointcloudApp(object):
       else:
         primary_pc = "None"
       if primary_pc != "None":
-        rospy.loginfo("PC_APP: Primary pointcloud set to: " + primary_pc)
-    rospy.set_param('~pc_app/primary_pointcloud', primary_pc)
+        nepi_msg.publishMsgInfo(self,"Primary pointcloud set to: " + primary_pc)
+    nepi_ros.set_param(self,'~primary_pointcloud', primary_pc)
     self.publish_selection_status()
     
 
   def pointcloudCb(self,msg,topic):
       if topic != "":
         topic_uid = topic.replace('/','')
-        transforms_dict = rospy.get_param('~pc_app/transforms_dict',self.init_transforms_dict)
+        transforms_dict = nepi_ros.get_param(self,'~transforms_dict',self.init_transforms_dict)
         if topic in transforms_dict.keys():
           transform = transforms_dict[topic]
         else:
@@ -839,16 +844,16 @@ class NepiPointcloudApp(object):
     img_snapshot_enabled = self.save_data_if.data_product_snapshot_enabled('pointcloud_image')
     need_img = (img_has_subscribers is True) or (img_saving_is_enabled is True) or (img_snapshot_enabled is True)
 
-    ros_frame_id = rospy.get_param('~pc_app/frame_3d', self.init_proc_frame_3d)
-    topic_primary = rospy.get_param('~pc_app/primary_pointcloud', self.init_primary_pointcloud)
+    ros_frame_id = nepi_ros.get_param(self,'~frame_3d', self.init_proc_frame_3d)
+    topic_primary = nepi_ros.get_param(self,'~primary_pointcloud', self.init_primary_pointcloud)
     
     if (need_pc or need_img and topic_primary != "None"):
       o3d_pc = None
       # Combine selected 
-      age_filter_s = rospy.get_param('~pc_app/age_filter_s', self.init_age_filter_s)
-      combine_option = rospy.get_param('~pc_app/combine_option',self.init_combine_option)
-      transforms_dict = rospy.get_param('~pc_app/transforms_dict',self.init_transforms_dict)
-      current_time = rospy.get_rostime()
+      age_filter_s = nepi_ros.get_param(self,'~age_filter_s', self.init_age_filter_s)
+      combine_option = nepi_ros.get_param(self,'~combine_option',self.init_combine_option)
+      transforms_dict = nepi_ros.get_param(self,'~transforms_dict',self.init_transforms_dict)
+      current_time = nepi_ros.get_rostime()
       pc_add_count = 0
       # Get priamary pointcloud
       topic_puid = topic_primary.replace('/','')
@@ -886,7 +891,7 @@ class NepiPointcloudApp(object):
               o3d_pc_add = eval('self.' + topic_uid + '_pc')
               eval('self.' + topic_uid + '_lock').release()
             #else:
-              #rospy.loginfo("PC_APP: Combine pointcloud not registered yet: " + topic_puid)
+              #nepi_msg.publishMsgInfo(self,"Combine pointcloud not registered yet: " + topic_puid)
             if ros_timestamp_add is not None:
               #pc_age = abs(current_time - ros_timestamp)
               #pc_age = pc_age.to_sec()
@@ -912,11 +917,11 @@ class NepiPointcloudApp(object):
 
         if self.pc_max_range_m != 0:
           # Process Combined Pointcloud
-          clip_enable = rospy.get_param('~pc_app/process/clip_enabled', self.init_proc_clip_enabled )
+          clip_enable = nepi_ros.get_param(self,'~process/clip_enabled', self.init_proc_clip_enabled )
           if clip_enable:
-            min_m = rospy.get_param('~pc_app/process/range_min_m', self.init_proc_range_min_m)
-            max_m = rospy.get_param('~pc_app/process/range_max_m', self.init_proc_range_max_m)
-            clip_process = rospy.get_param('~pc_app/process/clip_selection', self.init_proc_clip_selection )
+            min_m = nepi_ros.get_param(self,'~process/range_min_m', self.init_proc_range_min_m)
+            max_m = nepi_ros.get_param(self,'~process/range_max_m', self.init_proc_range_max_m)
+            clip_process = nepi_ros.get_param(self,'~process/clip_selection', self.init_proc_clip_selection )
             if clip_process == 'Range' and min_m < 0:
               min_m = 0
             clip_function = self.getClipFunction(clip_process)
@@ -931,16 +936,16 @@ class NepiPointcloudApp(object):
 
 
 
-          k_points = rospy.get_param('~pc_app/process/uniform_downsample_k_points',self.init_proc_uniform_downsample_k_points)
+          k_points = nepi_ros.get_param(self,'~process/uniform_downsample_k_points',self.init_proc_uniform_downsample_k_points)
           if k_points > 0:
             o3d_pc = nepi_pc.uniform_down_sampling(o3d_pc, k_points)
 
-          num_neighbors = rospy.get_param('~pc_app/process/outlier_removal_num_neighbors',self.init_proc_outlier_removal_num_neighbors)   
+          num_neighbors = nepi_ros.get_param(self,'~process/outlier_removal_num_neighbors',self.init_proc_outlier_removal_num_neighbors)   
           if num_neighbors > 0:
             statistical_outlier_removal_std_ratio = 2.0
             [o3d_pc, ind] = nepi_pc.statistical_outlier_removal(o3d_pc, num_neighbors, statistical_outlier_removal_std_ratio)
 
-          voxel_size_m = rospy.get_param('~pc_app/process/voxel_downsample_size',self.init_proc_voxel_downsample_size)
+          voxel_size_m = nepi_ros.get_param(self,'~process/voxel_downsample_size',self.init_proc_voxel_downsample_size)
           if voxel_size_m > 0:
             o3d_pc = nepi_pc.voxel_down_sampling(o3d_pc, voxel_size_m)
 
@@ -948,31 +953,31 @@ class NepiPointcloudApp(object):
           if pc_has_subscribers:
             # ToDo Convert to map frame if selected
             ros_pc_out_msg = nepi_pc.o3dpc_to_rospc(o3d_pc, stamp=current_time, frame_id=ros_frame_id)
-            if not rospy.is_shutdown():
+            if not nepi_ros.is_shutdown():
               self.proc_pc_pub.publish(ros_pc_out_msg)
 
           if pc_saving_is_enabled is True or pc_snapshot_enabled is True:
             self.save_pc2file('pointcloud',o3d_pc,current_time)
             
-          render_enable = rospy.get_param('~pc_app/render/render_enable', self.init_render_enable)
+          render_enable = nepi_ros.get_param(self,'~render/render_enable', self.init_render_enable)
 	  
           if need_img and render_enable:
             # Render the pointcloud image
-            img_width = rospy.get_param('~pc_app/render/image_width',  self.init_image_width)
-            img_height = rospy.get_param('~pc_app/render/image_height', self.init_image_height)
-            start_range_ratio = rospy.get_param('~pc_app/render/start_range_ratio', self.init_view_start_range_ratio)
-            stop_range_ratio = rospy.get_param('~pc_app/render/stop_range_ratio', self.init_view_stop_range_ratio)
-            zoom_ratio = rospy.get_param('~pc_app/render/zoom_ratio',self.init_view_zoom_ratio)
-            rotate_ratio = rospy.get_param('~pc_app/render/rotate_ratio',self.init_view_rotate_ratio)
-            tilt_ratio = rospy.get_param('~pc_app/render/tilt_ratio',self.init_view_tilt_ratio)
-            cam_fov = rospy.get_param('~pc_app/render/cam_fov', self.init_view_cam_fov )
-            cam_view = rospy.get_param('~pc_app/render/cam_view',self.init_view_cam_view)
-            cam_pos = rospy.get_param('~pc_app/render/cam_pos',self.init_view_cam_pos)
-            cam_rot = rospy.get_param('~pc_app/render/cam_rot',self.init_view_cam_rot)
+            img_width = nepi_ros.get_param(self,'~render/image_width',  self.init_image_width)
+            img_height = nepi_ros.get_param(self,'~render/image_height', self.init_image_height)
+            start_range_ratio = nepi_ros.get_param(self,'~render/start_range_ratio', self.init_view_start_range_ratio)
+            stop_range_ratio = nepi_ros.get_param(self,'~render/stop_range_ratio', self.init_view_stop_range_ratio)
+            zoom_ratio = nepi_ros.get_param(self,'~render/zoom_ratio',self.init_view_zoom_ratio)
+            rotate_ratio = nepi_ros.get_param(self,'~render/rotate_ratio',self.init_view_rotate_ratio)
+            tilt_ratio = nepi_ros.get_param(self,'~render/tilt_ratio',self.init_view_tilt_ratio)
+            cam_fov = nepi_ros.get_param(self,'~render/cam_fov', self.init_view_cam_fov )
+            cam_view = nepi_ros.get_param(self,'~render/cam_view',self.init_view_cam_view)
+            cam_pos = nepi_ros.get_param(self,'~render/cam_pos',self.init_view_cam_pos)
+            cam_rot = nepi_ros.get_param(self,'~render/cam_rot',self.init_view_cam_rot)
 
             # ToDo: Fix self pc_min_range_m and pc_max_range_m calcs
-            min_range_m =  rospy.get_param('~pc_app/process/range_min_m', self.init_proc_range_min_m)
-            max_range_m =   rospy.get_param('~pc_app/process/range_max_m', self.init_proc_range_max_m)
+            min_range_m =  nepi_ros.get_param(self,'~process/range_min_m', self.init_proc_range_min_m)
+            max_range_m =   nepi_ros.get_param(self,'~process/range_max_m', self.init_proc_range_max_m)
 
 
             delta_range_m = max_range_m - min_range_m
@@ -1014,7 +1019,7 @@ class NepiPointcloudApp(object):
             if ros_img_msg is not None:
               if self.view_img_pub is not None:
                 if img_has_subscribers:
-                  if not rospy.is_shutdown():
+                  if not nepi_ros.is_shutdown():
                     self.view_img_pub.publish(ros_img_msg)
 
               if img_saving_is_enabled is True or img_snapshot_enabled is True:
@@ -1022,10 +1027,10 @@ class NepiPointcloudApp(object):
                 self.save_img2file('pointcloud_image',cv2_img,current_time)
           
       else: # Data Empty
-          rospy.sleep(0.1)
+          nepi_ros.sleep(0.1)
     else: # No data available
-        rospy.sleep(0.25)
-    rospy.sleep(0.01) # Yield
+        nepi_ros.sleep(0.25)
+    nepi_ros.sleep(0.01) # Yield
   
       
     
@@ -1085,7 +1090,7 @@ class NepiPointcloudApp(object):
     return frame3d_list
 
   def getFrame3DTransformsMsg(self):
-    transforms_dict = rospy.get_param('~pc_app/transforms_dict',self.init_transforms_dict)
+    transforms_dict = nepi_ros.get_param(self,'~transforms_dict',self.init_transforms_dict)
     transforms_topic_list = []
     transforms_list = []
     for topic in transforms_dict.keys():
@@ -1121,22 +1126,22 @@ class NepiPointcloudApp(object):
 
   def addTransformToDict(self,transform_msg):
     topic = transform_msg.topic_namespace
-    transforms_dict = rospy.get_param('~pc_app/transforms_dict',self.init_transforms_dict)
+    transforms_dict = nepi_ros.get_param(self,'~transforms_dict',self.init_transforms_dict)
     transforms_dict[topic] = self.getTransformFromMsg(transform_msg.transform)
-    rospy.set_param('~pc_app/transforms_dict',transforms_dict)
+    nepi_ros.set_param(self,'~transforms_dict',transforms_dict)
 
   def removeTransformFromDict(self,topic_namespace):
-    transforms_dict = rospy.get_param('~pc_app/transforms_dict',self.init_transforms_dict)
+    transforms_dict = nepi_ros.get_param(self,'~transforms_dict',self.init_transforms_dict)
     if topic_namespace in transforms_dict:
       transforms_dict.pop(topic_namespace)
-    rospy.set_param('~pc_app/transforms_dict',transforms_dict)
+    nepi_ros.set_param(self,'~transforms_dict',transforms_dict)
 
     
   #######################
   # Node Cleanup Function
   
   def cleanup_actions(self):
-    rospy.loginfo("PC_APP: Shutting down: Executing script cleanup actions")
+    nepi_msg.publishMsgInfo(self,"Shutting down: Executing script cleanup actions")
 
 
 #########################################
