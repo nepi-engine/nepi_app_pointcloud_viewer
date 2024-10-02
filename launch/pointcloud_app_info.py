@@ -9,12 +9,19 @@
 #
 
 APP_NAME = 'Pointcloud' # Use in display menus
-DESCRIPTION = 'Application for combining, processing, and rendering pointcloud data topics'
-PKG_NAME = 'nepi_app_pointcloud'
-APP_FILE = 'pointcloud_app_node.py'
-NODE_NAME = 'app_pointcloud'
-RUI_FILES = ['NepiAppPointcloud.js','NepiAppPointcloudProcess.js','NepiAppPointcloudRender.js']
-RUI_MAIN_FILE = 'NepiAppPointcloud.js'
-RUI_MAIN_CLASS = 'PointcloudApp'
-RUI_MENU_NAME = 'Pointcloud Viewer'
+FILE_TYPE = 'APP'
+APP_DICT = dict(
+    description = 'Application for combining, processing, and rendering pointcloud data topics',
+    pkg_name = 'nepi_app_pointcloud',
+    config_file = 'app_pointcloud.yaml',
+    app_file = 'pointcloud_app_node.py',
+    node_name = 'app_pointcloud'
+)
+RUI_DICT = dict(
+    rui_menu_name = 'Pointcloud Viewer', # RUI menu name or "None" if no rui support
+    rui_files = ['NepiAppPointcloud.js','NepiAppPointcloudProcess.js','NepiAppPointcloudRender.js'],
+    rui_main_file ='NepiAppPointcloud.js',
+    rui_main_class = 'PointcloudApp',
+)
+
 
