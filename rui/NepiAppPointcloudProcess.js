@@ -20,7 +20,7 @@ import Styles from "./Styles"
 import Select, { Option } from "./Select"
 
 
-import { onUpdateSetStateValue, onEnterSendFloatValue, onEnterSendIntValue, onChangeSwitchStateValue, convertStrToStrList, createMenuListFromStrList, onDropdownSelectedSendStr } from "./Utilities"
+import { onUpdateSetStateValue, onEnterSendFloatValue, onEnterSendIntValue, onChangeSwitchStateValue, createMenuListFromStrList, onDropdownSelectedSendStr } from "./Utilities"
 
 @inject("ros")
 @observer

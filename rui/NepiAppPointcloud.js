@@ -26,7 +26,7 @@ import { round, convertStrToStrList, createShortValuesFromNamespaces, createMenu
 import NepiPointcloudProcessControls from "./NepiAppPointcloudProcess"
 import NepiPointcloudRenderControls from "./NepiAppPointcloudRender"
 
-import Nepi_IF_SaveData from "./Nepi_IF_SaveData"
+import NepiIFSaveData from "./Nepi_IF_SaveData"
 
 @inject("ros")
 @observer
@@ -614,7 +614,7 @@ class PointcloudApp extends Component {
           {this.renderImageViewer()}
 
           <div hidden={!connected}>
-            <Nepi_IF_SaveData
+            <NepiIFSaveData
                   saveNamespace={this.state.appNamespace}
                   title={"Nepi_IF_SaveData"}
               />
