@@ -13,6 +13,7 @@ FILE_TYPE = 'APP'
 APP_DICT = dict(
     description = 'Application for combining, processing, and rendering pointcloud data topics',
     pkg_name = 'nepi_app_pointcloud',
+    group_name = 'POINTCLOUD',
     config_file = 'app_pointcloud.yaml',
     app_file = 'pointcloud_app_node.py',
     node_name = 'app_pointcloud'

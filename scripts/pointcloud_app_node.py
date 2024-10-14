@@ -57,6 +57,7 @@ from sensor_msgs.msg import PointField
 from sensor_msgs import point_cloud2
 
 from nepi_edge_sdk_base import nepi_ros
+from nepi_edge_sdk_base import nepi_save
 from nepi_edge_sdk_base import nepi_msg
 from nepi_edge_sdk_base import nepi_pc 
 from nepi_edge_sdk_base import nepi_img 
@@ -139,7 +140,8 @@ class NepiPointcloudApp(object):
   view_img_pub = None
   acquiring = False
 
-
+  pc_has_subscribers = False
+  img_has_subscribers = False
   #######################
   ### Node Initialization
   DEFAULT_NODE_NAME = "app_pointcloud" # Can be overwitten by luanch command
@@ -806,6 +808,11 @@ class NepiPointcloudApp(object):
       if primary_pc != "None":
         nepi_msg.publishMsgInfo(self,"Primary pointcloud set to: " + primary_pc)
     nepi_ros.set_param(self,'~primary_pointcloud', primary_pc)
+    self.pc_has_subscribers = (self.proc_pc_pub.get_num_connections() > 0)
+    if self.view_img_pub is not None:
+      self.img_has_subscribers = (self.view_img_pub.get_num_connections() > 0)
+    else:
+      self.img_has_subscribers = False
     self.publish_selection_status()
     
 
@@ -831,18 +838,19 @@ class NepiPointcloudApp(object):
   def updateDataProductsThread(self,timer):
     # Check if new data is needed
 
-    pc_has_subscribers = (self.proc_pc_pub.get_num_connections() > 0)
+    pc_has_subscribers = self.pc_has_subscribers
     pc_saving_is_enabled = self.save_data_if.data_product_saving_enabled('pointcloud')
+    pc_should_save = pc_saving_is_enabled and self.save_data_if.data_product_should_save('pointcloud')
     pc_snapshot_enabled = self.save_data_if.data_product_snapshot_enabled('pointcloud')
-    need_pc = (pc_has_subscribers is True) or (pc_saving_is_enabled is True) or (pc_snapshot_enabled is True)
+    pc_save = (pc_saving_is_enabled and pc_should_save) or pc_snapshot_enabled
+    need_pc = (pc_has_subscribers is True) or (pc_save is True) 
 
-    if self.view_img_pub is not None:
-      img_has_subscribers = (self.view_img_pub.get_num_connections() > 0)
-    else:
-      img_has_subscribers = False
+    img_has_subscribers = self.img_has_subscribers
     img_saving_is_enabled = self.save_data_if.data_product_saving_enabled('pointcloud_image')
+    img_should_save = self.save_data_if.data_product_should_save('pointcloud_image')
     img_snapshot_enabled = self.save_data_if.data_product_snapshot_enabled('pointcloud_image')
-    need_img = (img_has_subscribers is True) or (img_saving_is_enabled is True) or (img_snapshot_enabled is True)
+    img_save = (img_saving_is_enabled and img_should_save) or img_snapshot_enabled
+    need_img = (img_has_subscribers is True) or (img_save is True)
 
     ros_frame_id = nepi_ros.get_param(self,'~frame_3d', self.init_proc_frame_3d)
     topic_primary = nepi_ros.get_param(self,'~primary_pointcloud', self.init_primary_pointcloud)
@@ -956,8 +964,8 @@ class NepiPointcloudApp(object):
             if not nepi_ros.is_shutdown():
               self.proc_pc_pub.publish(ros_pc_out_msg)
 
-          if pc_saving_is_enabled is True or pc_snapshot_enabled is True:
-            self.save_pc2file('pointcloud',o3d_pc,current_time)
+          if pc_save is True:
+            nepi_save.save_pc2file(self,'pointcloud',o3d_pc,current_time, save_check = False)
             
           render_enable = nepi_ros.get_param(self,'~render/render_enable', self.init_render_enable)
 	  
@@ -1022,9 +1030,8 @@ class NepiPointcloudApp(object):
                   if not nepi_ros.is_shutdown():
                     self.view_img_pub.publish(ros_img_msg)
 
-              if img_saving_is_enabled is True or img_snapshot_enabled is True:
-                cv2_img = nepi_img.rosimg_to_cv2img(ros_img_msg)
-                self.save_img2file('pointcloud_image',cv2_img,current_time)
+              if img_save is True:
+                 nepi_save.save_ros_img2file(self,'pointcloud_image',ros_img_msg,current_time, save_check = False)
           
       else: # Data Empty
           nepi_ros.sleep(0.1)
@@ -1033,38 +1040,7 @@ class NepiPointcloudApp(object):
     nepi_ros.sleep(0.01) # Yield
   
       
-    
-  #######################
-  # Data Saving Funcitons
  
-
-  def save_img2file(self,data_product,cv2_img,ros_timestamp):
-      if self.save_data_if is not None:
-          saving_is_enabled = self.save_data_if.data_product_saving_enabled(data_product)
-          snapshot_enabled = self.save_data_if.data_product_snapshot_enabled(data_product)
-          # Save data if enabled
-          if saving_is_enabled or snapshot_enabled:
-              if cv2_img is not None:
-                  if (self.save_data_if.data_product_should_save(data_product) or snapshot_enabled):
-                      full_path_filename = self.save_data_if.get_full_path_filename(nepi_ros.get_datetime_str_from_stamp(ros_timestamp), 
-                                                                                              "pointcloud_app-" + data_product, 'png')
-                      if os.path.isfile(full_path_filename) is False:
-                          cv2.imwrite(full_path_filename, cv2_img)
-                          self.save_data_if.data_product_snapshot_reset(data_product)
-
-  def save_pc2file(self,data_product,o3d_pc,ros_timestamp):
-      if self.save_data_if is not None:
-          saving_is_enabled = self.save_data_if.data_product_saving_enabled(data_product)
-          snapshot_enabled = self.save_data_if.data_product_snapshot_enabled(data_product)
-          # Save data if enabled
-          if saving_is_enabled or snapshot_enabled:
-              if o3d_pc is not None:
-                  if (self.save_data_if.data_product_should_save(data_product) or snapshot_enabled):
-                      full_path_filename = self.save_data_if.get_full_path_filename(nepi_ros.get_datetime_str_from_stamp(ros_timestamp), 
-                                                                                              "pointcloud_app-" + data_product, 'pcd')
-                      if os.path.isfile(full_path_filename) is False:
-                          nepi_pc.save_pointcloud(o3d_pc,full_path_filename)
-                          self.save_data_if.data_product_snapshot_reset(data_product)
 
                 
 

@@ -69,14 +69,15 @@ class PointcloudApp extends Component {
 
       connected: false,
 
-      listener: null
+      statusListener: null,
 
+      needs_update: true
 
 
     }
 
-    this.updateSelectionListener = this.updateSelectionListener.bind(this)
-    this.selectionStatusListener = this.selectionStatusListener.bind(this)
+    this.updateStatusListener = this.updateStatusListener.bind(this)
+    this.statusListener = this.statusListener.bind(this)
 
     this.getAppNamespace = this.getAppNamespace.bind(this)
     this.getPointcloudOptions = this.getPointcloudOptions.bind(this)
@@ -107,7 +108,7 @@ class PointcloudApp extends Component {
   }
 
   // Callback for handling ROS Status messages
-  selectionStatusListener(message) {
+  statusListener(message) {
     const pointcloudTopicsStr = message.selected_pointcloud_topics
     var pointcloudsStrList = convertStrToStrList(pointcloudTopicsStr)
     const combineOptionsStr = message.combine_options
@@ -140,26 +141,31 @@ class PointcloudApp extends Component {
   }
 
   // Function for configuring and subscribing to Status
-  updateSelectionListener() {
+  updateStatusListener() {
     const statusNamespace = this.getAppNamespace() + '/status'
-    if (this.state.listener) {
-      this.state.listener.unsubscribe()
+    if (this.state.statusListener) {
+      this.state.statusListener.unsubscribe()
     }
-    var listener = this.props.ros.setupPointcloudSelectionStatusListener(
-          statusNamespace,
-          this.selectionStatusListener
-        )
-    this.setState({ listener: listener})
+    var statusListener = this.props.ros.setupStatusListener(
+      statusNamespace,
+      "nepi_app_pointcloud/PointcloudSelectionStatus",
+      this.statusListener
+    )
+    this.setState({ statusListener: statusListener,
+      needs_update: false
+    })
   }
 
   // Lifecycle method called when compnent updates.
   // Used to track changes in the topic
   componentDidUpdate(prevProps, prevState, snapshot) {
     const namespace = this.getAppNamespace()
-    if (prevState.appNamespace !== namespace && namespace !== null) {
-      if (namespace.indexOf('null') === -1) {
+    const namespace_updated = (prevState.appNamespace !== namespace && namespace !== null)
+    const needs_update = (this.state.needs_update && namespace !== null)
+    if (namespace_updated || needs_update) {
+      if (namespace.indexOf('null') === -1){
         this.setState({appNamespace: namespace})
-        this.updateSelectionListener()
+        this.updateStatusListener()
       } 
     }
   }
@@ -167,8 +173,8 @@ class PointcloudApp extends Component {
   // Lifecycle method called just before the component umounts.
   // Used to unsubscribe to Status message
   componentWillUnmount() {
-    if (this.state.listener) {
-      this.state.listener.unsubscribe()
+    if (this.state.statusListener) {
+      this.state.statusListener.unsubscribe()
     }
   }
 
@@ -606,10 +612,6 @@ class PointcloudApp extends Component {
 
       <Columns>
         <Column>
-
-        <Label title={"App Running"}>
-           <BooleanIndicator value={(this.state.connected)} />
-        </Label>
 
           {this.renderImageViewer()}
 
