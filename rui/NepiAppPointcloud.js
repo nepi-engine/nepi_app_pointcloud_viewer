@@ -615,19 +615,11 @@ class PointcloudApp extends Component {
 
           {this.renderImageViewer()}
 
-          <div hidden={!connected}>
-            <NepiIFSaveData
-                  saveNamespace={this.state.appNamespace}
-                  title={"Nepi_IF_SaveData"}
-              />
-          </div>
-
 
         </Column>
         <Column>
 
           {this.renderPointcloudSelection()}
-
 
 
 
@@ -644,6 +636,13 @@ class PointcloudApp extends Component {
             />
 
         </div>
+
+        <div hidden={!connected}>
+            <NepiIFSaveData
+                  saveNamespace={this.state.appNamespace}
+                  title={"Nepi_IF_SaveData"}
+              />
+          </div>
 
 
          </Column>
