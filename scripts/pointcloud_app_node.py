@@ -174,7 +174,6 @@ class NepiPointcloudApp(object):
     sel_remove_pc_sub = rospy.Subscriber('~remove_pointcloud', String, self.removePointcloudCb, queue_size = 10)
     sel_primary_pc_sub = rospy.Subscriber('~set_primary_pointcloud', String, self.setPrimaryPointcloudCb, queue_size = 10)
     sel_age_filter_sub = rospy.Subscriber("~set_age_filter", Float32, self.setAgeFilterCb, queue_size = 10)
-    sel_add_transform_sub = rospy.Subscriber('~add_transform', Frame3DTransformUpdate, self.addTransformCb, queue_size = 10)
     sel_upate_transform_sub = rospy.Subscriber('~update_transform', Frame3DTransformUpdate, self.updateTransformCb, queue_size = 10)
     sel_remove_transform_sub = rospy.Subscriber('~remove_transform', String, self.removeTransformCb, queue_size = 10)
     sel_combine_option = rospy.Subscriber('~set_combine_option', String, self.setCombineOptionCb, queue_size = 10)
@@ -338,11 +337,6 @@ class NepiPointcloudApp(object):
       nepi_ros.set_param(self,'~age_filter_s',val)
     self.publish_selection_status()
 
-
-  def addTransformCb(self,msg):
-    #nepi_msg.publishMsgInfo(self,str(msg))
-    self.addTransformToDict(msg)
-    self.publish_selection_status()
 
   def updateTransformCb(self,msg):
     #nepi_msg.publishMsgInfo(self,str(msg))
