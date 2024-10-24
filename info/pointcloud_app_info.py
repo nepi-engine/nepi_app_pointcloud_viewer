@@ -8,7 +8,7 @@
 # License: 3-clause BSD, see https://opensource.org/licenses/BSD-3-Clause
 #
 
-APP_NAME = 'Pointcloud' # Use in display menus
+APP_NAME = 'Pointcloud Viewer' # Use in display menus
 FILE_TYPE = 'APP'
 APP_DICT = dict(
     description = 'Application for combining, processing, and rendering pointcloud data topics',
