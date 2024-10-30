@@ -622,9 +622,6 @@ class PointcloudApp extends Component {
           {this.renderPointcloudSelection()}
 
 
-
-        <div hidden={!connected}>
-
         <NepiPointcloudProcessControls
                 processNamespace={this.state.appNamespace + "/process"}
                 title={"NepiPointcloudProcessControls"}
@@ -635,15 +632,10 @@ class PointcloudApp extends Component {
                 title={"NepiPointcloudRenderControls"}
             />
 
-        </div>
-
-        <div hidden={!connected}>
             <NepiIFSaveData
                   saveNamespace={this.state.appNamespace}
                   title={"Nepi_IF_SaveData"}
               />
-          </div>
-
 
          </Column>
       </Columns>
