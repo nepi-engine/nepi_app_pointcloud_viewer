@@ -1,30 +1,20 @@
 #!/usr/bin/env python
 #
-# Copyright (c) 2024 Numurus, LLC <https://www.numurus.com>.
+# Copyright (c) 2024 Numurus <https://www.numurus.com>.
 #
-# This file is part of nepi-engine
-# (see https://github.com/nepi-engine).
+# This file is part of nepi applications (nepi_apps) repo
+# (see https://https://github.com/nepi-engine/nepi_apps)
 #
-# License: 3-clause BSD, see https://opensource.org/licenses/BSD-3-Clause
+# License: nepi applications are licensed under the "Numurus Software License", 
+# which can be found at: <https://numurus.com/wp-content/uploads/Numurus-Software-License-Terms.pdf>
 #
-
-# Sample NEPI Process Script.
-# 1. Converts ROS pointcloud2 to Open3d pointcloud
-# 2. Blank area for custom code
-# 3. Converts Open3d pointcloud back to ROS pointcloud2
-
-
-#ToDo
-#- Add pointcloud render enable control to node params, add node subscriber, add to to RenderStatus msg, and have asher add control to RUI
-#- Fix the nepi_pc get min and max bounds 
-#- Create add_pointclouds function in nepi_pc.py that supports combining bw and rgb pointclouds and replace in node Add process
-#- Implement age_filter before pointcloud combine process
-#- Apply transforms to each point cloud before combining
-#- Add fit_pointclouds function to nepi_pc.py and add to node comnbine options
-#- Get pointcloud node integrated and working with nepi_engine_ws codebase.  Allready in there, just not working when enabled in launch file
-#- Add 3D bounding box selection and clipping group with new RUI selection box/section/page
-#- Improve pointcloud pub latency. Break rendering into its own node that this node starts up.  The new node would subscribe to this noodes pointcloud topic 
-
+# Redistributions in source code must retain this top-level comment block.
+# Plagiarizing this software to sidestep the license obligations is illegal.
+#
+# Contact Information:
+# ====================
+# - mailto:nepi@numurus.com
+#
 import os
 # ROS namespace setup
 NEPI_BASE_NAMESPACE = '/nepi/s2x/'
