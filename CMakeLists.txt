@@ -7,7 +7,7 @@ This file is part of nepi-engine
 License: 3-clause BSD, see https://opensource.org/licenses/BSD-3-Clause
 ]]
 cmake_minimum_required(VERSION 1.0.0)
-project(nepi_app_pointcloud)
+project(nepi_app_pointcloud_viewer)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -180,7 +180,7 @@ catkin_package(
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
  catkin_install_python(PROGRAMS
-   scripts/pointcloud_app_node.py
+   scripts/pointcloud_viewer_app_node.py
    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
  )
 

@@ -25,7 +25,6 @@ import Label from "./Label"
 import Select, { Option } from "./Select"
 import Styles from "./Styles"
 import Button, { ButtonMenu } from "./Button"
-import BooleanIndicator from "./BooleanIndicator"
 import CameraViewer from "./CameraViewer"
 import Input from "./Input"
 
@@ -42,12 +41,12 @@ import NepiIFSaveData from "./Nepi_IF_SaveData"
 @observer
 
 // Pointcloud Application page
-class PointcloudApp extends Component {
+class PointcloudViewerApp extends Component {
   constructor(props) {
     super(props)
 
     this.state = {
-      appName: "app_pointcloud",
+      appName: "app_pointcloud_viewer",
       appNamespace: null,
       pointcloudTopicList: [],
       selectedPointclouds: [],
@@ -158,7 +157,7 @@ class PointcloudApp extends Component {
     }
     var statusListener = this.props.ros.setupStatusListener(
       statusNamespace,
-      "nepi_app_pointcloud/PointcloudSelectionStatus",
+      "nepi_app_pointcloud_viewer/PointcloudSelectionStatus",
       this.statusListener
     )
     this.setState({ statusListener: statusListener,
@@ -615,7 +614,6 @@ class PointcloudApp extends Component {
 
 
   render() {
-    const connected = this.state.connected
     return (
 
 
@@ -654,4 +652,4 @@ class PointcloudApp extends Component {
   }
 }
 
-export default PointcloudApp
+export default PointcloudViewerApp

@@ -79,10 +79,11 @@ class NepiPointcloudProcessControls extends Component {
     if (this.state.processListener) {
       this.state.processListener.unsubscribe()
     }
-    var processListener = this.props.ros.setupPointcloudProcessStatusListener(
-          statusNamespace,
-          this.processStatusListener
-        )
+    var processListener = this.props.ros.setupStatusListener(
+      statusNamespace,
+      "nepi_app_pointcloud_viewer/PointcloudProcessStatus",
+      this.processStatusListener
+    )
     this.setState({ processListener: processListener})
   }
 

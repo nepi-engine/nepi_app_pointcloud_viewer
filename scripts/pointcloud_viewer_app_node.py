@@ -39,7 +39,7 @@ from std_msgs.msg import UInt8, Empty, String, Bool, Float32, Int32
 from geometry_msgs.msg import Vector3, Transform, Quaternion 
 from nepi_ros_interfaces.msg import IDXStatus, RangeWindow, ImageSize, \
   Frame3DTransform, Frame3DTransformUpdate, BoundingBox3D
-from nepi_app_pointcloud.msg import PointcloudSelectionStatus,PointcloudProcessStatus,PointcloudRenderStatus
+from nepi_app_pointcloud_viewer.msg import PointcloudSelectionStatus,PointcloudProcessStatus,PointcloudRenderStatus
 
 # For Testing 
 from std_msgs.msg import Header
@@ -99,7 +99,7 @@ STANDARD_IMAGE_SIZES = ['630 x 900','720 x 1080','955 x 600','1080 x 1440','1024
 # Node Class
 #########################################
 
-class NepiPointcloudApp(object):
+class NepiPointcloudViewerApp(object):
   combine_options = ["Add"]
   data_products = ["pointcloud","pointcloud_image"]
   frame3d_list = ['nepi_center_frame','map']
@@ -134,7 +134,7 @@ class NepiPointcloudApp(object):
   img_has_subscribers = False
   #######################
   ### Node Initialization
-  DEFAULT_NODE_NAME = "app_pointcloud" # Can be overwitten by luanch command
+  DEFAULT_NODE_NAME = "app_pointcloud_viewer" # Can be overwitten by luanch command
   def __init__(self):
     #### APP NODE INIT SETUP ####
     nepi_ros.init_node(name= self.DEFAULT_NODE_NAME)
@@ -1108,7 +1108,7 @@ class NepiPointcloudApp(object):
 # Main
 #########################################
 if __name__ == '__main__':
-  NepiPointcloudApp()
+  NepiPointcloudViewerApp()
 
 
 

@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>nepi_app_pointcloud</name>
+  <name>nepi_app_pointcloud_viewer</name>
   <version>0.0.0</version>
   <description>The pointcloud app package</description>
 

@@ -100,10 +100,11 @@ class NepiPointcloudRenderControls extends Component {
     if (this.state.renderListener) {
       this.state.renderListener.unsubscribe()
     }
-    var renderListener = this.props.ros.setupPointcloudRenderStatusListener(
-          statusNamespace,
-          this.renderStatusListener
-        )
+    var renderListener = this.props.ros.setupStatusListener(
+      statusNamespace,
+      "nepi_app_pointcloud_viewer/PointcloudRenderStatus",
+      this.renderStatusListener
+    )
     this.setState({ renderListener: renderListener })
   }
 
@@ -151,7 +152,9 @@ class NepiPointcloudRenderControls extends Component {
   }
 
   render() {
+    const namespace = this.props.renderNamespace
     const {  sendTriggerMsg } = this.props.ros
+
     return (
       <Section title={"Render Controls"}>
 
@@ -162,7 +165,7 @@ class NepiPointcloudRenderControls extends Component {
           <Label title="Render Enabled">
               <Toggle
               checked={this.state.renderEnabled===true}
-              onClick={() => this.props.ros.sendBoolMsg(this.props.renderNamespace + "/set_render_enable",!this.state.renderEnabled)}>
+              onClick={() => this.props.ros.sendBoolMsg(namespace + "/set_render_enable",!this.state.renderEnabled)}>
               </Toggle>
             </Label>
  
@@ -180,7 +183,7 @@ class NepiPointcloudRenderControls extends Component {
             <Column>
             <div align={"left"} textAlign={"left"} >
                 <ButtonMenu>
-                  <Button onClick={() => sendTriggerMsg( this.props.renderNamespace + "/reset_controls")}>{"Reset Controls"}</Button>
+                  <Button onClick={() => sendTriggerMsg( namespace + "/reset_controls")}>{"Reset Controls"}</Button>
                 </ButtonMenu>
               </div>
             </Column>
@@ -195,7 +198,7 @@ class NepiPointcloudRenderControls extends Component {
                 max={this.state.rangeRatioMax}
                 min_limit_m={this.state.rangeLimitMinM}
                 max_limit_m={this.state.rangeLimitMaxM}
-                topic={this.props.renderNamespace + "/set_range_ratios"}
+                topic={namespace + "/set_range_ratios"}
                 tooltip={"Adjustable range"}
                 unit={"m"}
               />
@@ -208,7 +211,7 @@ class NepiPointcloudRenderControls extends Component {
                       title={"Zoom"}
                       msgType={"std_msgs/Float32"}
                       adjustment={this.state.zoomAdjustment}
-                      topic={this.props.renderNamespace + "/set_zoom_ratio"}
+                      topic={namespace + "/set_zoom_ratio"}
                       scaled={0.01}
                       min={0}
                       max={100}
@@ -221,7 +224,7 @@ class NepiPointcloudRenderControls extends Component {
                       title={"Rotate"}
                       msgType={"std_msgs/Float32"}
                       adjustment={this.state.rotateAdjustment}
-                      topic={this.props.renderNamespace + "/set_rotate_ratio"}
+                      topic={namespace + "/set_rotate_ratio"}
                       scaled={0.01}
                       min={0}
                       max={100}
@@ -233,7 +236,7 @@ class NepiPointcloudRenderControls extends Component {
                       title={"Tilt"}
                       msgType={"std_msgs/Float32"}
                       adjustment={this.state.tiltAdjustment}
-                      topic={this.props.renderNamespace + "/set_tilt_ratio"}
+                      topic={namespace + "/set_tilt_ratio"}
                       scaled={0.01}
                       min={0}
                       max={100}
@@ -251,7 +254,7 @@ class NepiPointcloudRenderControls extends Component {
                       id="camViewX"
                       value={(this.state.camViewX)}
                       onChange={(event) => this.onUpdateSetStateValue(event,"camViewX")}
-                      onKeyDown={(event) => this.onKeyCamText(event,(this.props.renderNamespace + "/set_camera_view"),this.state.camViewX,this.state.camViewY,this.state.camViewZ)}
+                      onKeyDown={(event) => this.onKeyCamText(event,(namespace + "/set_camera_view"),this.state.camViewX,this.state.camViewY,this.state.camViewZ)}
                     />
                   </Label>
 
@@ -263,7 +266,7 @@ class NepiPointcloudRenderControls extends Component {
                       id="camViewY"
                       value={(this.state.camViewY)}
                       onChange={(event) => this.onUpdateSetStateValue(event,"camViewY")}
-                      onKeyDown={(event) => this.onKeyCamText(event,(this.props.renderNamespace + "/set_camera_view"),this.state.camViewX,this.state.camViewY,this.state.camViewZ)}
+                      onKeyDown={(event) => this.onKeyCamText(event,(namespace + "/set_camera_view"),this.state.camViewX,this.state.camViewY,this.state.camViewZ)}
                     />
                   </Label>
 
@@ -275,7 +278,7 @@ class NepiPointcloudRenderControls extends Component {
                       id="camViewZ"
                       value={(this.state.camViewZ)}
                       onChange={(event) => this.onUpdateSetStateValue(event,"camViewZ")}
-                      onKeyDown={(event) => this.onKeyCamText(event,(this.props.renderNamespace + "/set_camera_view"),this.state.camViewX,this.state.camViewY,this.state.camViewZ)}
+                      onKeyDown={(event) => this.onKeyCamText(event,(namespace + "/set_camera_view"),this.state.camViewX,this.state.camViewY,this.state.camViewZ)}
                     />
                   </Label>
 
@@ -293,7 +296,7 @@ class NepiPointcloudRenderControls extends Component {
                       id="camPosX"
                       value={(this.state.camPosX)}
                       onChange={(event) => this.onUpdateSetStateValue(event,"camPosX")}
-                      onKeyDown={(event) => this.onKeyCamText(event,(this.props.renderNamespace + "/set_camera_position"),this.state.camPosX,this.state.camPosY,this.state.camPosZ)}
+                      onKeyDown={(event) => this.onKeyCamText(event,(namespace + "/set_camera_position"),this.state.camPosX,this.state.camPosY,this.state.camPosZ)}
                     />
                   </Label>
 
@@ -305,7 +308,7 @@ class NepiPointcloudRenderControls extends Component {
                       id="camPosY"
                       value={(this.state.camPosY)}
                       onChange={(event) => this.onUpdateSetStateValue(event,"camPosY")}
-                      onKeyDown={(event) => this.onKeyCamText(event,(this.props.renderNamespace + "/set_camera_position"),this.state.camPosX,this.state.camPosY,this.state.camPosZ)}
+                      onKeyDown={(event) => this.onKeyCamText(event,(namespace + "/set_camera_position"),this.state.camPosX,this.state.camPosY,this.state.camPosZ)}
                     />
                   </Label>
 
@@ -317,7 +320,7 @@ class NepiPointcloudRenderControls extends Component {
                       id="camPosZ"
                       value={(this.state.camPosZ)}
                       onChange={(event) => this.onUpdateSetStateValue(event,"camPosZ")}
-                      onKeyDown={(event) => this.onKeyCamText(event,(this.props.renderNamespace + "/set_camera_position"),this.state.camPosX,this.state.camPosY,this.state.camPosZ)}
+                      onKeyDown={(event) => this.onKeyCamText(event,(namespace + "/set_camera_position"),this.state.camPosX,this.state.camPosY,this.state.camPosZ)}
                     />
                   </Label>
 
@@ -335,7 +338,7 @@ class NepiPointcloudRenderControls extends Component {
                       id="camRotX"
                       value={(this.state.camRotX)}
                       onChange={(event) => this.onUpdateSetStateValue(event,"camRotX")}
-                      onKeyDown={(event) => this.onKeyCamText(event,(this.props.renderNamespace + "/set_camera_rotation"),this.state.camRotX,this.state.camRotY,this.state.camRotZ)}
+                      onKeyDown={(event) => this.onKeyCamText(event,(namespace + "/set_camera_rotation"),this.state.camRotX,this.state.camRotY,this.state.camRotZ)}
                     />
                   </Label>
 
@@ -347,7 +350,7 @@ class NepiPointcloudRenderControls extends Component {
                       id="camRotY"
                       value={(this.state.camRotY)}
                       onChange={(event) => this.onUpdateSetStateValue(event,"camRotY")}
-                      onKeyDown={(event) => this.onKeyCamText(event,(this.props.renderNamespace + "/set_camera_rotation"),this.state.camRotX,this.state.camRotY,this.state.camRotZ)}
+                      onKeyDown={(event) => this.onKeyCamText(event,(namespace + "/set_camera_rotation"),this.state.camRotX,this.state.camRotY,this.state.camRotZ)}
                     />
                   </Label>
 
@@ -359,7 +362,7 @@ class NepiPointcloudRenderControls extends Component {
                       id="camRotZ"
                       value={(this.state.camRotZ)}
                       onChange={(event) => this.onUpdateSetStateValue(event,"camRotZ")}
-                      onKeyDown={(event) => this.onKeyCamText(event,(this.props.renderNamespace + "/set_camera_rotation"),this.state.camRotX,this.state.camRotY,this.state.camRotZ)}
+                      onKeyDown={(event) => this.onKeyCamText(event,(namespace + "/set_camera_rotation"),this.state.camRotX,this.state.camRotY,this.state.camRotZ)}
                     />
                   </Label>
 
