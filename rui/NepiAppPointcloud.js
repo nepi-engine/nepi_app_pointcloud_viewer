@@ -29,7 +29,7 @@ import BooleanIndicator from "./BooleanIndicator"
 import CameraViewer from "./CameraViewer"
 import Input from "./Input"
 
-import { round, convertStrToStrList, createShortValuesFromNamespaces, createMenuListFromStrList,
+import { round, createShortValuesFromNamespaces, createMenuListFromStrList,
   onDropdownSelectedSendStr, onUpdateSetStateValue, onEnterSendFloatValue, onEnterSetStateFloatValue,
   } from "./Utilities"
 
@@ -615,7 +615,6 @@ class PointcloudApp extends Component {
 
 
   render() {
-    const connected = this.state.connected
     return (
 
 
