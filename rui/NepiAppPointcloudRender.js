@@ -21,8 +21,6 @@ import Input from "./Input"
 import Styles from "./Styles"
 
 
-import { convertStrToStrList} from "./Utilities"
-
 @inject("ros")
 @observer
 
@@ -88,7 +86,7 @@ class NepiPointcloudRenderControls extends Component {
       camRotY: message.camera_rotation.y,
       camRotZ: message.camera_rotation.z,
     })
-    const frames3d = convertStrToStrList(this.state.frames3d)
+    const frames3d = (this.state.frames3d)
     var frames3dlist = ["map"]
     for (let ind = 0; ind < frames3d.length; ind++) {
       frames3dlist.push(frames3d[ind])

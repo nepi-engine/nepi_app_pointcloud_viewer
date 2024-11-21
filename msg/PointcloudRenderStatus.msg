@@ -1,7 +1,7 @@
 # This message details pointcloud rendering status
 
 # Standard Image Size Opions string list
-string standard_image_sizes
+string[] standard_image_sizes
 
 # Render Image Size
 int32 image_width

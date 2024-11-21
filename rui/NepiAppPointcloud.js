@@ -29,7 +29,7 @@ import BooleanIndicator from "./BooleanIndicator"
 import CameraViewer from "./CameraViewer"
 import Input from "./Input"
 
-import { round, createShortValuesFromNamespaces, createMenuListFromStrList,
+import { round, convertStrToStrList, createShortValuesFromNamespaces, createMenuListFromStrList,
   onDropdownSelectedSendStr, onUpdateSetStateValue, onEnterSendFloatValue, onEnterSetStateFloatValue,
   } from "./Utilities"
 
@@ -120,10 +120,10 @@ class PointcloudApp extends Component {
   // Callback for handling ROS Status messages
   statusListener(message) {
     const pointcloudTopicsStr = message.selected_pointcloud_topics
-    var pointcloudsStrList = convertStrToStrList(pointcloudTopicsStr)
+    var pointcloudsStrList = (pointcloudTopicsStr)
     const combineOptionsStr = message.combine_options
-    const combineOptions = convertStrToStrList(combineOptionsStr)
-    const framesList = convertStrToStrList(message.available_3d_frames)
+    const combineOptions = (combineOptionsStr)
+    const framesList = (message.available_3d_frames)
     const transformsTopicStr = message.transforms_topic_list
     const transformsStr = message.transforms_list
     this.updateTranformsList( transformsTopicStr,transformsStr)
@@ -241,7 +241,7 @@ class PointcloudApp extends Component {
  
 
   updateTranformsList(transformsTopicMsg,transformsMsg) {
-    var topicsList = convertStrToStrList(transformsTopicMsg)
+    var topicsList = (transformsTopicMsg)
     const transformsFlat = convertStrToStrList(transformsMsg)
     var transform = []
     var transformsList = []
@@ -615,6 +615,7 @@ class PointcloudApp extends Component {
 
 
   render() {
+    const connected = this.state.connected
     return (
 
 

@@ -636,7 +636,7 @@ class NepiPointcloudApp(object):
     status_msg = PointcloudSelectionStatus()
 
     pointcloud_topic_list = nepi_ros.get_param(self,'~selected_pointclouds',self.init_selected_pointclouds)
-    status_msg.selected_pointcloud_topics = str(pointcloud_topic_list)
+    status_msg.selected_pointcloud_topics = (pointcloud_topic_list)
 
     primary_pointcloud = nepi_ros.get_param(self,'~primary_pointcloud', self.init_primary_pointcloud)
     if primary_pointcloud == "None" and len(pointcloud_topic_list) > 0:
@@ -651,7 +651,7 @@ class NepiPointcloudApp(object):
     status_msg.age_filter_s = age_filter_s
 
 
-    status_msg.available_3d_frames = str(self.frame3d_list)
+    status_msg.available_3d_frames = (self.frame3d_list)
     status_msg.output_3d_frame = nepi_ros.get_param(self,'~frame_3d', self.init_proc_frame_3d) 
 
     transforms_dict = nepi_ros.get_param(self,'~transforms_dict',self.init_transforms_dict)
@@ -661,7 +661,7 @@ class NepiPointcloudApp(object):
     nepi_ros.set_param(self,'~transforms_dict',transforms_dict)
     [status_msg.transforms_topic_list,status_msg.transforms_list] = self.getFrame3DTransformsMsg()
 
-    status_msg.combine_options = str(self.combine_options)
+    status_msg.combine_options = (self.combine_options)
     status_msg.combine_option = nepi_ros.get_param(self,'~combine_option', self.init_combine_option)
 
     range_meters = RangeWindow()
@@ -694,7 +694,7 @@ class NepiPointcloudApp(object):
   def publish_render_status(self):
     status_msg = PointcloudRenderStatus()
 
-    status_msg.standard_image_sizes = str(STANDARD_IMAGE_SIZES)
+    status_msg.standard_image_sizes = (STANDARD_IMAGE_SIZES)
 
     status_msg.image_width = nepi_ros.get_param(self,'~render/image_width',  self.init_image_width)
     status_msg.image_height = nepi_ros.get_param(self,'~render/image_height', self.init_image_height)
@@ -1057,7 +1057,7 @@ class NepiPointcloudApp(object):
       transforms_topic_list.append(topic)
       transform=transforms_dict[topic]
       transforms_list.append(transform)
-    return str(transforms_topic_list), str(transforms_list)
+    return (transforms_topic_list), str(transforms_list)
 
   def getTransformFromMsg(self,transform_msg):
     x = transform_msg.translate_vector.x
