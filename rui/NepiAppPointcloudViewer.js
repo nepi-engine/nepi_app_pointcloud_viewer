@@ -161,7 +161,6 @@ class PointcloudViewerApp extends Component {
       this.statusListener
     )
     this.setState({ statusListener: statusListener,
-      needs_update: false
     })
   }
 
@@ -170,8 +169,7 @@ class PointcloudViewerApp extends Component {
   componentDidUpdate(prevProps, prevState, snapshot) {
     const namespace = this.getAppNamespace()
     const namespace_updated = (prevState.appNamespace !== namespace && namespace !== null)
-    const needs_update = (this.state.needs_update && namespace !== null)
-    if (namespace_updated || needs_update) {
+    if (namespace_updated) {
       if (namespace.indexOf('null') === -1){
         this.setState({appNamespace: namespace})
         this.updateStatusListener()
@@ -614,12 +612,16 @@ class PointcloudViewerApp extends Component {
 
 
   render() {
+    if (this.state.needs_update === true){
+      this.setState({needs_update: false})
+    }
     return (
-
-
-
       <Columns>
         <Column>
+        <NepiIFSaveData
+                  saveNamespace={this.state.appNamespace}
+                  title={"Nepi_IF_SaveData"}
+              />
 
           {this.renderImageViewer()}
 
@@ -630,20 +632,16 @@ class PointcloudViewerApp extends Component {
           {this.renderPointcloudSelection()}
 
 
-        <NepiPointcloudProcessControls
-                processNamespace={this.state.appNamespace + "/process"}
-                title={"NepiPointcloudProcessControls"}
-            />
-            
           <NepiPointcloudRenderControls
                 renderNamespace={this.state.appNamespace + "/render"}
                 title={"NepiPointcloudRenderControls"}
             />
 
-            <NepiIFSaveData
-                  saveNamespace={this.state.appNamespace}
-                  title={"Nepi_IF_SaveData"}
-              />
+        <NepiPointcloudProcessControls
+                processNamespace={this.state.appNamespace + "/process"}
+                title={"NepiPointcloudProcessControls"}
+            />
+            
 
          </Column>
       </Columns>
