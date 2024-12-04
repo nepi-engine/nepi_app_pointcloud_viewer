@@ -49,6 +49,7 @@ class NepiPointcloudRenderControls extends Component {
       camRotX: null,
       camRotY: null,
       camRotZ: null,
+      whiteBg: false,
 
       renderListener: null,
 
@@ -85,6 +86,7 @@ class NepiPointcloudRenderControls extends Component {
       camRotX: message.camera_rotation.x,
       camRotY: message.camera_rotation.y,
       camRotZ: message.camera_rotation.z,
+      whiteBg: message.white_background
     })
     const frames3d = (this.state.frames3d)
     var frames3dlist = ["map"]
@@ -178,6 +180,13 @@ class NepiPointcloudRenderControls extends Component {
         <div hidden={!this.state.renderEnabled}>    
           <Columns>
             <Column>
+
+            <Label title="Use White Backaground">
+              <Toggle
+              checked={this.state.whiteBg===true}
+              onClick={() => this.props.ros.sendBoolMsg(namespace + "/set_white_bg_enable",!this.state.whiteBg)}>
+              </Toggle>
+            </Label>
 
             </Column>
             <Column>

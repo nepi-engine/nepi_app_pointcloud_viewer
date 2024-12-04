@@ -86,8 +86,6 @@ Factory_Cam_Pos = [-5, 0, 0]
 Factory_Cam_Rot = [0, 0, 1]
 Factory_Render_Enable = True
 
-Render_Background = [0, 0, 0, 0]
-
 UPDATE_POINTCLOUD_SUBS_RATE_HZ = 1
 UPDATE_DATA_PRODUCTS_RATE_HZ = 10
 
@@ -132,6 +130,8 @@ class NepiPointcloudViewerApp(object):
 
   pc_has_subscribers = False
   img_has_subscribers = False
+  
+  last_bg_white = False
   #######################
   ### Node Initialization
   DEFAULT_NODE_NAME = "app_pointcloud_viewer" # Can be overwitten by luanch command
@@ -196,6 +196,7 @@ class NepiPointcloudViewerApp(object):
     view_cam_view_sub = rospy.Subscriber("~render/set_camera_view", Vector3, self.setCamViewCb, queue_size = 10)
     view_cam_position_sub = rospy.Subscriber("~render/set_camera_position", Vector3, self.setCamPositionCb, queue_size = 10)
     view_cam_rotate_sub = rospy.Subscriber("~render/set_camera_rotation", Vector3, self.setCamRotationCb, queue_size = 10)
+    view_wbg_sub = rospy.Subscriber("~render/set_white_bg_enable", Bool, self.setWhiteBgCb, queue_size = 10)
     render_enable_sub = rospy.Subscriber("~render/set_render_enable", Bool, self.setRenderEnableCb, queue_size = 10)
 
     self.view_status_pub = rospy.Publisher("~render/status", PointcloudRenderStatus, queue_size=1, latch=True)
@@ -255,10 +256,13 @@ class NepiPointcloudViewerApp(object):
     nepi_ros.set_param(self,'~render/zoom_ratio', Factory_Zoom_Ratio)
     nepi_ros.set_param(self,'~render/rotate_ratio', Factory_Rotate_Ratio)
     nepi_ros.set_param(self,'~render/tilt_ratio', Factory_Tilt_Ratio)
+    
     nepi_ros.set_param(self,'~render/cam_fov', Factory_Cam_FOV)
     nepi_ros.set_param(self,'~render/cam_view', Factory_Cam_View)
     nepi_ros.set_param(self,'~render/cam_pos', Factory_Cam_Pos)
     nepi_ros.set_param(self,'~render/cam_rot', Factory_Cam_Rot)
+
+    nepi_ros.set_param(self,'~render/use_wbg', False )
     nepi_ros.set_param(self,'~render/render_enable', Factory_Render_Enable)
    
     self.publish_selection_status()
@@ -272,11 +276,8 @@ class NepiPointcloudViewerApp(object):
     self.resetSelectionControls()
   
   def resetSelectionControls(self,do_updates = True):
-    #nepi_ros.set_param(self,'~selected_pointclouds', self.init_selected_pointclouds)
-    #nepi_ros.set_param(self,'~primary_pointcloud', self.init_primary_pointcloud)
-    nepi_ros.set_param(self,'~selected_pointclouds', [])
-    nepi_ros.set_param(self,'~primary_pointcloud', "None")
-    # Fix for now
+    nepi_ros.set_param(self,'~selected_pointclouds', self.init_selected_pointclouds)
+    nepi_ros.set_param(self,'~primary_pointcloud', self.init_primary_pointcloud)
     nepi_ros.set_param(self,'~age_filter_s', self.init_age_filter_s)
     nepi_ros.set_param(self,'~transforms_dict', self.init_transforms_dict)
     nepi_ros.set_param(self,'~combine_option', self.init_combine_option)
@@ -313,7 +314,7 @@ class NepiPointcloudViewerApp(object):
   def setPrimaryPointcloudCb(self,msg):
     ##nepi_msg.publishMsgInfo(self,str(msg))
     pc_topic = msg.data
-    pc_topics = nepi_ros.get_param(self,'~~pc_app/selected_pointclouds',self.init_primary_pointcloud)
+    pc_topics = nepi_ros.get_param(self,'~selected_pointclouds',self.init_primary_pointcloud)
     if pc_topic in pc_topics:
       nepi_ros.set_param(self,'~primary_pointcloud',pc_topic)
     else:
@@ -456,6 +457,7 @@ class NepiPointcloudViewerApp(object):
     nepi_ros.set_param(self,'~render/cam_view',self.init_view_cam_view)
     nepi_ros.set_param(self,'~render/cam_pos',self.init_view_cam_pos)
     nepi_ros.set_param(self,'~render/cam_rot',self.init_view_cam_rot)
+    nepi_ros.set_param(self,'~render/use_wbg', self.init_use_wbg )
     nepi_ros.set_param(self,'~render/render_enable', self.init_render_enable)
     
     if do_updates:
@@ -549,10 +551,6 @@ class NepiPointcloudViewerApp(object):
     nepi_ros.set_param(self,'~render/cam_rot',new_array)
     self.publish_render_status()
   
-  def setRenderEnableCb(self,msg):
-    render_enable = msg.data
-    nepi_ros.set_param(self,'~render/render_enable', render_enable)
-    self.publish_render_status()
 
   def setRangeRatiosCb(self,msg):
     #nepi_msg.publishMsgInfo(self,str(msg))
@@ -563,6 +561,16 @@ class NepiPointcloudViewerApp(object):
       nepi_ros.set_param(self,'~render/stop_range_ratio', max_ratio)
     self.publish_render_status()
 
+
+  def setWhiteBgCb(self,msg):
+    enable = msg.data
+    nepi_ros.set_param(self,'~render/use_wbg', enable)
+    self.publish_render_status()
+
+  def setRenderEnableCb(self,msg):
+    render_enable = msg.data
+    nepi_ros.set_param(self,'~render/render_enable', render_enable)
+    self.publish_render_status()
 
 
   #######################
@@ -581,7 +589,7 @@ class NepiPointcloudViewerApp(object):
     pass
 
   def initParamServerValues(self,do_updates = True):
-      nepi_msg.publishMsgInfo(self,"Reseting param values to init values")
+      nepi_msg.publishMsgInfo(self,"Reseting init values to param values")
       self.init_selected_pointclouds = nepi_ros.get_param(self,'~selected_pointclouds', [])
       self.init_primary_pointcloud = nepi_ros.get_param(self,'~primary_pointcloud', "None")
       self.init_age_filter_s = nepi_ros.get_param(self,'~age_filter_s', Factory_Age_Filter_S)
@@ -609,16 +617,21 @@ class NepiPointcloudViewerApp(object):
       self.init_view_cam_view = nepi_ros.get_param(self,'~render/cam_view', Factory_Cam_View)
       self.init_view_cam_pos = nepi_ros.get_param(self,'~render/cam_pos', Factory_Cam_Pos)
       self.init_view_cam_rot = nepi_ros.get_param(self,'~render/cam_rot', Factory_Cam_Rot)
+
+      self.init_use_wbg = nepi_ros.get_param(self,'~render/use_wbg', False )
       self.init_render_enable = nepi_ros.get_param(self,'~render/render_enable', Factory_Render_Enable)
       
       self.resetParamServer(do_updates)
 
   def resetParamServer(self,do_updates = True):
+      nepi_msg.publishMsgInfo(self,"Reseting param values to init values")
+      '''
       nepi_ros.set_param(self,'~selected_pointclouds', self.init_selected_pointclouds)
       nepi_ros.set_param(self,'~process/clip_selection', self.init_proc_clip_selection )
       nepi_ros.set_param(self,'~age_filter_s',  self.init_age_filter_s)
       nepi_ros.set_param(self,'~transforms_dict', self.init_transforms_dict)
       nepi_ros.set_param(self,'~combine_option',  self.init_combine_option)
+      '''
       self.resetSelectionControls(do_updates)
       self.resetProcessControls(do_updates)
       self.resetRenderControls(do_updates)
@@ -738,6 +751,8 @@ class NepiPointcloudViewerApp(object):
     cam_rot.z = rot[2]
     status_msg.camera_rotation = cam_rot
     
+    use_wbg = nepi_ros.get_param(self,'~render/use_wbg', self.init_use_wbg )
+    status_msg.white_background = use_wbg
     render_enable = nepi_ros.get_param(self,'~render/render_enable',self.init_render_enable)
     status_msg.render_enable = render_enable
 
@@ -989,13 +1004,23 @@ class NepiPointcloudViewerApp(object):
             tilt_angle = (0.5 - tilt_ratio) * 2 * 180
             tilt_vector = [0, tilt_angle, 0]
             o3d_pc = nepi_pc.rotate_pc(o3d_pc, tilt_vector)
-          
+            use_wbg = nepi_ros.get_param(self,'~render/use_wbg', self.init_use_wbg )
+            bg_color = [0,0,0,0]
+            if use_wbg:
+              bg_color = [1,1,1,1]
             ros_img_msg = None
-            update_renderer = (self.img_renderer is None or self.img_renderer_mtl is None or self.last_img_width != img_width or self.last_img_height != img_height or self.last_fov != cam_fov)
+            update_renderer = (self.img_renderer is None or self.img_renderer_mtl is None \
+            or self.last_img_width != img_width or self.last_img_height != img_height or self.last_fov != cam_fov \
+            or use_wbg != self.last_bg_white)
+            self.last_bg_white = use_wbg
             if update_renderer:
+              if self.img_renderer is not None:
+                self.img_renderer = None
+                time.sleep(1)
               # Create point cloud renderer
-              self.img_renderer = nepi_pc.create_img_renderer(img_width=img_width,img_height=img_height, fov=cam_fov, background = Render_Background)
-              self.img_renderer_mtl = nepi_pc.create_img_renderer_mtl()
+              nepi_msg.publishMsgWarn(self,"Creating new pointcloud renderer")
+              self.img_renderer = nepi_pc.create_img_renderer(img_width=img_width,img_height=img_height, fov=cam_fov, background = bg_color)
+              self.img_renderer_mtl = nepi_pc.create_img_renderer_mtl(shader = "defaultLit")
               self.img_renderer = nepi_pc.remove_img_renderer_geometry(self.img_renderer)
             else:
               self.img_renderer = nepi_pc.add_img_renderer_geometry(o3d_pc,self.img_renderer, self.img_renderer_mtl)
