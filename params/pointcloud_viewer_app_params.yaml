@@ -2,7 +2,7 @@ APP_DICT:
   description: Application for combining, processing, and rendering pointcloud data
     topics
   pkg_name: nepi_app_pointcloud_viewer
-  group_name: POINTCLOUD
+  group_name: DATA
   config_file: app_pointcloud_viewer.yaml
   app_file: pointcloud_viewer_app_node.py
   node_name: app_pointcloud_viewer
