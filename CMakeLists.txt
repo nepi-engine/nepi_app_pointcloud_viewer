@@ -124,7 +124,7 @@ catkin_package(
    geometry_msgs
    nav_msgs
    nepi_ros_interfaces
-#  DEPENDS CATKIN_DEPENDS sensor_msgs nepi_ros_interfaces nepi_edge_sdk_base 
+#  DEPENDS CATKIN_DEPENDS sensor_msgs nepi_ros_interfaces nepi_sdk 
 )
 
 
@@ -224,18 +224,13 @@ install(DIRECTORY params/
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 set( NEPI_RUI_FOLDER 
   # Must hard-coded 
-  /mnt/nepi_storage/nepi_src/nepi_engine_ws/src/nepi_rui/src/rui_webserver/rui-app/src
+  /opt/nepi/nepi_rui/src/rui_webserver/rui-app/src
 )
 
 install(DIRECTORY rui/
   DESTINATION ${NEPI_RUI_FOLDER}
 )
 
-## Mark other files for installation (e.g. launch and bag files, etc.)
-set( NEPI_RUI_FOLDER 
-  # Must hard-coded 
-  /mnt/nepi_storage/nepi_src/nepi_engine_ws/src/nepi_rui/src/rui_webserver/rui-app/src
-)
 
 install(DIRECTORY rui/
   DESTINATION ${NEPI_RUI_FOLDER}

@@ -46,14 +46,14 @@ from std_msgs.msg import Header
 from sensor_msgs.msg import PointField
 from sensor_msgs import point_cloud2
 
-from nepi_edge_sdk_base import nepi_ros
-from nepi_edge_sdk_base import nepi_save
-from nepi_edge_sdk_base import nepi_msg
-from nepi_edge_sdk_base import nepi_pc 
-from nepi_edge_sdk_base import nepi_img 
+from nepi_sdk import nepi_ros
+from nepi_sdk import nepi_save
+from nepi_sdk import nepi_msg
+from nepi_sdk import nepi_pc 
+from nepi_sdk import nepi_img 
 
-from nepi_edge_sdk_base.save_data_if import SaveDataIF
-from nepi_edge_sdk_base.save_cfg_if import SaveCfgIF
+from nepi_sdk.save_data_if import SaveDataIF
+from nepi_sdk.save_cfg_if import SaveCfgIF
 
 
 
