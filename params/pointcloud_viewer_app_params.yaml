@@ -6,6 +6,8 @@ APP_DICT:
   config_file: app_pointcloud_viewer.yaml
   app_file: pointcloud_viewer_app_node.py
   node_name: app_pointcloud_viewer
+  license_type: Numurus Software License
+  license_link: https://numurus.com/wp-content/uploads/Numurus-Software-License-Terms.pdf
 RUI_DICT:
   rui_menu_name: Pointcloud Viewer
   rui_files:
