@@ -215,8 +215,8 @@ class NepiPointcloudViewerApp(object):
 
 
     ## Start Pointcloud Subscriber Update Process
-    nepi_ros.timer(nepi_ros.duration(self.update_pointcloud_subs_interval_sec), self.updatePointcloudSubsThread)
-    nepi_ros.timer(nepi_ros.duration(self.update_data_products_interval_sec), self.updateDataProductsThread)
+    nepi_ros.timer(nepi_ros.ros_ros_ros_duration(self.update_pointcloud_subs_interval_sec), self.updatePointcloudSubsThread)
+    nepi_ros.timer(nepi_ros.ros_ros_ros_duration(self.update_data_products_interval_sec), self.updateDataProductsThread)
 
     ## Initiation Complete
     nepi_msg.publishMsgInfo(self,"Initialization Complete")
@@ -860,7 +860,7 @@ class NepiPointcloudViewerApp(object):
       age_filter_s = nepi_ros.get_param(self,'~age_filter_s', self.init_age_filter_s)
       combine_option = nepi_ros.get_param(self,'~combine_option',self.init_combine_option)
       transforms_dict = nepi_ros.get_param(self,'~transforms_dict',self.init_transforms_dict)
-      current_time = nepi_ros.get_rostime()
+      current_time = nepi_ros.ros_ros_time_now()
       pc_add_count = 0
       # Get priamary pointcloud
       topic_puid = topic_primary.replace('/','')
