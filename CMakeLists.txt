@@ -218,7 +218,17 @@ set( NEPI_APP_PARAMS_FOLDER
 )
 
 install(DIRECTORY params/
-  DESTINATION ${NEPI_APP_PARAMS_FOLDER}
+  DESTINATION ${NEPI_APP_PARAMS_FOLDER} 
+)
+
+set( NEPI_API_FOLDER 
+  # Must hard-coded 
+  /opt/nepi/ros/lib/python3/dist-packages/nepi_api
+)
+
+install(DIRECTORY api/
+  DESTINATION ${NEPI_API_FOLDER} 
+  FILES_MATCHING PATTERN "*.py"
 )
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)

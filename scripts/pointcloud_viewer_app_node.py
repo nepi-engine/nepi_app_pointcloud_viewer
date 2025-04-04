@@ -52,8 +52,8 @@ from nepi_sdk import nepi_msg
 from nepi_sdk import nepi_pc 
 from nepi_sdk import nepi_img 
 
-from nepi_sdk.save_data_if import SaveDataIF
-from nepi_sdk.save_cfg_if import SaveCfgIF
+from nepi_api.sys_if_save_data import SaveDataIF
+from nepi_api.sys_if_save_cfg import SaveCfgIF
 
 
 
@@ -143,20 +143,11 @@ class NepiPointcloudViewerApp(object):
     nepi_msg.createMsgPublishers(self)
     nepi_msg.publishMsgInfo(self,"Starting Initialization Processes")
     ##############################
-    self.initParamServerValues(do_updates = False)
-    self.resetParamServer(do_updates = False)
+    # Initialize Params
+    self.initCb(do_updates = False)
    
 
-    # Set up save data and save config services ########################################################
-    self.save_data_if = SaveDataIF(data_product_names = self.data_products)
-    # Temp Fix until added as NEPI ROS Node
-    self.save_cfg_if = SaveCfgIF(updateParamsCallback=self.initParamServerValues, 
-                                 paramsModifiedCallback=self.updateFromParamServer)
-
-
-    ## App Setup ########################################################
-    app_reset_app_sub = rospy.Subscriber('~reset_app', Empty, self.resetAppCb, queue_size = 10)
-    self.initParamServerValues(do_updates=False)
+   ## App Setup ########################################################
 
     # Pointcloud Selection Setup ########################################################
     sel_reset_controls_sub = rospy.Subscriber("~reset_controls", Empty, self.resetSelectionControlsCb, queue_size = 10)
@@ -185,6 +176,11 @@ class NepiPointcloudViewerApp(object):
     self.proc_status_pub = rospy.Publisher("~process/status", PointcloudProcessStatus, queue_size=1, latch=True)
     self.proc_pc_pub = rospy.Publisher("~pointcloud", PointCloud2, queue_size=1)
 
+    self.view_status_pub = rospy.Publisher("~render/status", PointcloudRenderStatus, queue_size=1, latch=True)
+    time.sleep(1)
+
+
+
     # Pointcloud Render Subscribers ########################################################
     view_reset_controls_sub = rospy.Subscriber("~render/reset_controls", Empty, self.resetRenderControlsCb, queue_size = 10)
     view_image_size_sub = rospy.Subscriber("~render/set_image_size", ImageSize, self.setImageSizeCb, queue_size = 10)
@@ -199,13 +195,16 @@ class NepiPointcloudViewerApp(object):
     view_wbg_sub = rospy.Subscriber("~render/set_white_bg_enable", Bool, self.setWhiteBgCb, queue_size = 10)
     render_enable_sub = rospy.Subscriber("~render/set_render_enable", Bool, self.setRenderEnableCb, queue_size = 10)
 
-    self.view_status_pub = rospy.Publisher("~render/status", PointcloudRenderStatus, queue_size=1, latch=True)
+    self.save_cfg_if = SaveCfgIF(initCb=self.initCb, resetCb=self.resetCb,  factoryResetCb=self.factoryResetCb)
+    ready = self.save_cfg_if.wait_for_ready()
+
+    ##############################
+    self.initCb(do_updates = True)
+    # Set up save data and save config services ########################################################
+    self.save_data_if = SaveDataIF(data_product_names = self.data_products)
 
 
-
-    # Give publishers time to setup
-    time.sleep(1)
-
+    ##############################
     # Publish Status
     self.tf_buffer = tf2_ros.Buffer()
     self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
@@ -213,7 +212,7 @@ class NepiPointcloudViewerApp(object):
     self.publish_process_status()
     self.publish_render_status()
 
-
+    ##############################
     ## Start Pointcloud Subscriber Update Process
     nepi_ros.timer(nepi_ros.ros_duration(self.update_pointcloud_subs_interval_sec), self.updatePointcloudSubsThread)
     nepi_ros.timer(nepi_ros.ros_duration(self.update_data_products_interval_sec), self.updateDataProductsThread)
@@ -228,10 +227,7 @@ class NepiPointcloudViewerApp(object):
 ###################
 ## App Callbacks
 
-  def resetAppCb(self,msg):
-    self.resetApp()
-
-  def resetApp(self):
+  def factoryResetCb(self):
     nepi_ros.set_param(self,'~selected_pointclouds', [])
     nepi_ros.set_param(self,'~primary_pointcloud', "None")
     nepi_ros.set_param(self,'~age_filter_s', Factory_Age_Filter_S)
@@ -576,19 +572,8 @@ class NepiPointcloudViewerApp(object):
   #######################
   ### Config Functions
 
-  def saveConfigCb(self, msg):  # Just update class init values. Saving done by Config IF system
-    pass # Left empty for sim, Should update from param server
 
-  def setCurrentAsDefault(self):
-    pass # We only use the param server, no member variables to apply to param server
-
-  def updateFromParamServer(self):
-    #nepi_msg.publishMsgWarn(self,("Debugging: param_dict = " + str(param_dict))
-    #Run any functions that need updating on value change
-    # Don't need to run any additional functions
-    pass
-
-  def initParamServerValues(self,do_updates = True):
+  def initCb(self,do_updates = False):
       nepi_msg.publishMsgInfo(self,"Reseting init values to param values")
       self.init_selected_pointclouds = nepi_ros.get_param(self,'~selected_pointclouds', [])
       self.init_primary_pointcloud = nepi_ros.get_param(self,'~primary_pointcloud', "None")
@@ -620,10 +605,10 @@ class NepiPointcloudViewerApp(object):
 
       self.init_use_wbg = nepi_ros.get_param(self,'~render/use_wbg', False )
       self.init_render_enable = nepi_ros.get_param(self,'~render/render_enable', Factory_Render_Enable)
-      
-      self.resetParamServer(do_updates)
+      if do_updates == True:
+        self.resetCb(do_updates)
 
-  def resetParamServer(self,do_updates = True):
+  def resetCb(self,do_updates = True):
       nepi_msg.publishMsgInfo(self,"Reseting param values to init values")
       '''
       nepi_ros.set_param(self,'~selected_pointclouds', self.init_selected_pointclouds)
@@ -635,11 +620,10 @@ class NepiPointcloudViewerApp(object):
       self.resetSelectionControls(do_updates)
       self.resetProcessControls(do_updates)
       self.resetRenderControls(do_updates)
-      if do_updates:
-          self.updateFromParamServer()
-          self.publish_selection_status()
-          self.publish_process_status()
-          self.publish_render_status()
+
+      self.publish_selection_status()
+      self.publish_process_status()
+      self.publish_render_status()
 
 
 
