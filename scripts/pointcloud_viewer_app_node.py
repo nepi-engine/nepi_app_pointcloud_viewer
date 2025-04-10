@@ -47,11 +47,15 @@ from sensor_msgs.msg import PointField
 from sensor_msgs import point_cloud2
 
 from nepi_sdk import nepi_ros
+from nepi_sdk import nepi_utils
 from nepi_sdk import nepi_save
 from nepi_sdk import nepi_msg
 from nepi_sdk import nepi_pc 
 from nepi_sdk import nepi_img 
 
+
+from nepi_api.node_if import NodeClassIF
+from nepi_api.sys_if_msg import MsgIF
 from nepi_api.sys_if_save_data import SaveDataIF
 from nepi_api.sys_if_save_cfg import SaveCfgIF
 
@@ -138,11 +142,17 @@ class NepiPointcloudViewerApp(object):
   def __init__(self):
     #### APP NODE INIT SETUP ####
     nepi_ros.init_node(name= self.DEFAULT_NODE_NAME)
-    self.node_name = nepi_ros.get_node_name()
+    self.class_name = type(self).__name__
     self.base_namespace = nepi_ros.get_base_namespace()
-    nepi_msg.createMsgPublishers(self)
-    nepi_msg.publishMsgInfo(self,"Starting Initialization Processes")
-    ##############################
+    self.node_name = nepi_ros.get_node_name()
+    self.node_namespace = nepi_ros.get_node_namespace()
+
+    ##############################  
+    # Create Msg Class
+    self.msg_if = MsgIF(log_name = self.class_name)
+    self.msg_if.pub_info("Starting IF Initialization Processes")
+
+    ##############################     
     # Initialize Params
     self.initCb(do_updates = False)
    
@@ -218,7 +228,7 @@ class NepiPointcloudViewerApp(object):
     nepi_ros.timer(nepi_ros.ros_duration(self.update_data_products_interval_sec), self.updateDataProductsThread)
 
     ## Initiation Complete
-    nepi_msg.publishMsgInfo(self,"Initialization Complete")
+    self.msg_if.pub_info("Initialization Complete")
     nepi_ros.spin()
 
 
@@ -281,7 +291,7 @@ class NepiPointcloudViewerApp(object):
       self.publish_process_status()
 
   def addPointcloudCb(self,msg):
-    ##nepi_msg.publishMsgInfo(self,str(msg))
+    ##self.msg_if.pub_info(str(msg))
     pc_topic = msg.data
     pc_topics = nepi_ros.get_param(self,'~selected_pointclouds',self.init_selected_pointclouds)
     add_topic = False
@@ -289,36 +299,36 @@ class NepiPointcloudViewerApp(object):
       if pc_topic not in pc_topics:
         add_topic = True
       if add_topic:
-        nepi_msg.publishMsgInfo(self,"Adding Pointcloud topic to registered topics: " + pc_topic)
+        self.msg_if.pub_info("Adding Pointcloud topic to registered topics: " + pc_topic)
         pc_topics.append(pc_topic)
     nepi_ros.set_param(self,'~selected_pointclouds',pc_topics)
     self.publish_selection_status()
 
   def removePointcloudCb(self,msg):
-    ##nepi_msg.publishMsgInfo(self,str(msg))
+    ##self.msg_if.pub_info(str(msg))
     pc_topic = msg.data
     pc_topics = nepi_ros.get_param(self,'~selected_pointclouds',self.init_selected_pointclouds)
     remove_topic = False
     if pc_topic in pc_topics:
       remove_topic = True
     if remove_topic:
-      nepi_msg.publishMsgInfo(self,"Removing Pointcloud topic from registered topics: " + pc_topic)
+      self.msg_if.pub_info("Removing Pointcloud topic from registered topics: " + pc_topic)
       pc_topics.remove(pc_topic)
     nepi_ros.set_param(self,'~selected_pointclouds',pc_topics)
     self.publish_selection_status()
 
   def setPrimaryPointcloudCb(self,msg):
-    ##nepi_msg.publishMsgInfo(self,str(msg))
+    ##self.msg_if.pub_info(str(msg))
     pc_topic = msg.data
     pc_topics = nepi_ros.get_param(self,'~selected_pointclouds',self.init_primary_pointcloud)
     if pc_topic in pc_topics:
       nepi_ros.set_param(self,'~primary_pointcloud',pc_topic)
     else:
-      nepi_msg.publishMsgInfo(self,"Ignoring Set Primary Pointcloud as it is not in selected list")
+      self.msg_if.pub_info("Ignoring Set Primary Pointcloud as it is not in selected list")
     self.publish_selection_status()
 
   def setAgeFilterCb(self,msg):
-    #nepi_msg.publishMsgInfo(self,str(msg))
+    #self.msg_if.pub_info(str(msg))
     val = msg.data
     if val >= 0:
       nepi_ros.set_param(self,'~age_filter_s',val)
@@ -326,18 +336,18 @@ class NepiPointcloudViewerApp(object):
 
 
   def updateTransformCb(self,msg):
-    #nepi_msg.publishMsgInfo(self,str(msg))
+    #self.msg_if.pub_info(str(msg))
     self.addTransformToDict(msg)
     self.publish_selection_status()
 
   def removeTransformCb(self,msg):
-    #nepi_msg.publishMsgInfo(self,str(msg))
+    #self.msg_if.pub_info(str(msg))
     topic_namespace = msg.data
     self.removeTransformFromDict(topic_namespace)
     self.publish_selection_status()
 
   def removePointcloudCb(self,msg):
-    #nepi_msg.publishMsgInfo(self,str(msg))
+    #self.msg_if.pub_info(str(msg))
     pc_topic = msg.data
     pc_topics = nepi_ros.get_param(self,'~selected_pointclouds',self.init_selected_pointclouds)
     if pc_topic in pc_topics:
@@ -346,12 +356,12 @@ class NepiPointcloudViewerApp(object):
     self.publish_selection_status()   
 
   def setCombineOptionCb(self, msg):
-      #nepi_msg.publishMsgInfo(self,str(msg))
+      #self.msg_if.pub_info(str(msg))
       combine_option = msg.data
       if combine_option in self.combine_options:
         nepi_ros.set_param(self,'~combine_option', combine_option)
       else:
-        nepi_msg.publishMsgInfo(self,'Pointcloud combine option: ' + combine_option + ' not valid option')
+        self.msg_if.pub_info('Pointcloud combine option: ' + combine_option + ' not valid option')
       self.publish_selection_status()
       
 
@@ -373,20 +383,20 @@ class NepiPointcloudViewerApp(object):
       self.publish_process_status()
 
   def clipEnableCb(self,msg):
-    #nepi_msg.publishMsgInfo(self,str(msg))
+    #self.msg_if.pub_info(str(msg))
     new_enable = msg.data
     nepi_ros.set_param(self,'~process/clip_enabled', new_enable)
     self.publish_process_status()
 
   def setClipSelectionCb(self,msg):
-    #nepi_msg.publishMsgInfo(self,str(msg))
+    #self.msg_if.pub_info(str(msg))
     sel = msg.data
     if sel in self.clip_options:
       nepi_ros.set_param(self,'~process/clip_selection', sel )
     self.publish_process_status()
 
   def setClipBoxTopicCb(self,msg):
-    #nepi_msg.publishMsgInfo(self,str(msg))
+    #self.msg_if.pub_info(str(msg))
     self.bounding_box3d_topic = msg.data
     topic = msg.data
     if topic != self.bounding_box3d_topic and self.bounding_box3d_sub is not None:
@@ -398,7 +408,7 @@ class NepiPointcloudViewerApp(object):
     self.publish_process_status()
 
   def setRangeMetersCb(self,msg):
-    #nepi_msg.publishMsgInfo(self,str(msg))
+    #self.msg_if.pub_info(str(msg))
     range_min_m = msg.start_range
     range_max_m = msg.stop_range
     if range_min_m < range_max_m:
@@ -407,28 +417,28 @@ class NepiPointcloudViewerApp(object):
     self.publish_process_status()
 
   def setVoxelSizeCb(self,msg):
-    #nepi_msg.publishMsgInfo(self,str(msg))
+    #self.msg_if.pub_info(str(msg))
     val = msg.data
     if val >= 0:
       nepi_ros.set_param(self,'~process/voxel_downsample_size',val)
     self.publish_process_status()
 
   def setUniformPointsCb(self,msg):
-    #nepi_msg.publishMsgInfo(self,str(msg))
+    #self.msg_if.pub_info(str(msg))
     val = msg.data
     if val >= 0:
       nepi_ros.set_param(self,'~process/uniform_downsample_k_points',val)
     self.publish_process_status()
 
   def setOutlierNumCb(self,msg):
-    #nepi_msg.publishMsgInfo(self,str(msg))
+    #self.msg_if.pub_info(str(msg))
     val = msg.data
     if val >= 0:
       nepi_ros.set_param(self,'~process/outlier_removal_num_neighbors',val)
     self.publish_process_status()
 
   def setFrame3dCb(self, msg):
-    #nepi_msg.publishMsgInfo(self,str(msg))
+    #self.msg_if.pub_info(str(msg))
     frame_3d = msg.data
     frame3d_list = self.frame3d_list
     if frame_3d in frame3d_list:
@@ -461,7 +471,7 @@ class NepiPointcloudViewerApp(object):
 
 
   def setImageSizeCb(self,msg):
-    #nepi_msg.publishMsgInfo(self,str(msg))
+    #self.msg_if.pub_info(str(msg))
     width = msg.width
     height = msg.height
     if width > 100 and width < 5000 and height > 100 and height < 5000:
@@ -470,7 +480,7 @@ class NepiPointcloudViewerApp(object):
     self.publish_render_status()
 
   def setImageSizeIndCb(self,msg):
-    #nepi_msg.publishMsgInfo(self,str(msg))
+    #self.msg_if.pub_info(str(msg))
     index = msg.data
     if index <= len(STANDARD_IMAGE_SIZES):
       size_str = STANDARD_IMAGE_SIZES[index]
@@ -483,35 +493,35 @@ class NepiPointcloudViewerApp(object):
     self.publish_render_status()
 
   def setZoomRatioCb(self,msg):
-    #nepi_msg.publishMsgInfo(self,str(msg))
+    #self.msg_if.pub_info(str(msg))
     new_val = msg.data
     if new_val >= 0 and new_val <= 1 :
       nepi_ros.set_param(self,'~render/zoom_ratio',new_val)
     self.publish_render_status()
 
   def setZoomRatioCb(self,msg):
-    #nepi_msg.publishMsgInfo(self,str(msg))
+    #self.msg_if.pub_info(str(msg))
     new_val = msg.data
     if new_val >= 0 and new_val <= 1 :
       nepi_ros.set_param(self,'~render/zoom_ratio',new_val)
     self.publish_render_status()
 
   def setRotateRatioCb(self,msg):
-    #nepi_msg.publishMsgInfo(self,str(msg))
+    #self.msg_if.pub_info(str(msg))
     new_val = msg.data
     if new_val >= 0 and new_val <= 1 :
       nepi_ros.set_param(self,'~render/rotate_ratio',new_val)
     self.publish_render_status()
 
   def setTiltRatioCb(self,msg):
-    #nepi_msg.publishMsgInfo(self,str(msg))
+    #self.msg_if.pub_info(str(msg))
     new_val = msg.data
     if new_val >= 0 and new_val <= 1 :
       nepi_ros.set_param(self,'~render/tilt_ratio',new_val)
     self.publish_render_status()
 
   def setCamFovCb(self,msg):
-    #nepi_msg.publishMsgInfo(self,str(msg))
+    #self.msg_if.pub_info(str(msg))
     new_val = msg.data
     if new_val > 100:
       new_val = 100
@@ -521,7 +531,7 @@ class NepiPointcloudViewerApp(object):
     self.publish_render_status()
 
   def setCamViewCb(self,msg):
-    #nepi_msg.publishMsgInfo(self,str(msg))
+    #self.msg_if.pub_info(str(msg))
     new_array = []
     new_array.append(msg.x)
     new_array.append(msg.y)
@@ -530,7 +540,7 @@ class NepiPointcloudViewerApp(object):
     self.publish_render_status()
 
   def setCamPositionCb(self,msg):
-    #nepi_msg.publishMsgInfo(self,str(msg))
+    #self.msg_if.pub_info(str(msg))
     new_array = []
     new_array.append(msg.x)
     new_array.append(msg.y)
@@ -539,7 +549,7 @@ class NepiPointcloudViewerApp(object):
     self.publish_render_status()
 
   def setCamRotationCb(self,msg):
-    #nepi_msg.publishMsgInfo(self,str(msg))
+    #self.msg_if.pub_info(str(msg))
     new_array = []
     new_array.append(msg.x)
     new_array.append(msg.y)
@@ -549,7 +559,7 @@ class NepiPointcloudViewerApp(object):
   
 
   def setRangeRatiosCb(self,msg):
-    #nepi_msg.publishMsgInfo(self,str(msg))
+    #self.msg_if.pub_info(str(msg))
     min_ratio = msg.start_range
     max_ratio = msg.stop_range
     if min_ratio < max_ratio and min_ratio >= 0 and max_ratio <= 1:
@@ -574,7 +584,7 @@ class NepiPointcloudViewerApp(object):
 
 
   def initCb(self,do_updates = False):
-      nepi_msg.publishMsgInfo(self,"Reseting init values to param values")
+      self.msg_if.pub_info("Reseting init values to param values")
       self.init_selected_pointclouds = nepi_ros.get_param(self,'~selected_pointclouds', [])
       self.init_primary_pointcloud = nepi_ros.get_param(self,'~primary_pointcloud', "None")
       self.init_age_filter_s = nepi_ros.get_param(self,'~age_filter_s', Factory_Age_Filter_S)
@@ -609,7 +619,7 @@ class NepiPointcloudViewerApp(object):
         self.resetCb(do_updates)
 
   def resetCb(self,do_updates = True):
-      nepi_msg.publishMsgInfo(self,"Reseting param values to init values")
+      self.msg_if.pub_info("Reseting param values to init values")
       '''
       nepi_ros.set_param(self,'~selected_pointclouds', self.init_selected_pointclouds)
       nepi_ros.set_param(self,'~process/clip_selection', self.init_proc_clip_selection )
@@ -756,17 +766,17 @@ class NepiPointcloudViewerApp(object):
           exec('self.' + topic_uid + '_timestamp = None')
           exec('self.' + topic_uid + '_frame = None')
           exec('self.' + topic_uid + '_lock = threading.Lock()')
-          nepi_msg.publishMsgInfo(self,"Subscribing to topic: " + sel_topic)
-          #nepi_msg.publishMsgInfo(self,"with topic_uid: " + topic_uid)
+          self.msg_if.pub_info("Subscribing to topic: " + sel_topic)
+          #self.msg_if.pub_info("with topic_uid: " + topic_uid)
           pc_sub = rospy.Subscriber(sel_topic, PointCloud2, lambda msg: self.pointcloudCb(msg, sel_topic), queue_size = 10)
           self.pc_subs_dict[sel_topic] = pc_sub
-          nepi_msg.publishMsgInfo(self,"Pointcloud: " + sel_topic + " registered")
+          self.msg_if.pub_info("Pointcloud: " + sel_topic + " registered")
     if len(list(self.pc_subs_dict.keys())) > 0 and self.view_img_pub is None:
-      nepi_msg.publishMsgInfo(self,"Setting up pointcloud_image pub")
+      self.msg_if.pub_info("Setting up pointcloud_image pub")
       self.view_img_pub = rospy.Publisher("~pointcloud_image", Image, queue_size=1)
       time.sleep(1)
     elif len(list(self.pc_subs_dict.keys())) == 0 and self.view_img_pub is not None:
-      nepi_msg.publishMsgInfo(self,"Taking down pointcloud_image pub")
+      self.msg_if.pub_info("Taking down pointcloud_image pub")
       self.view_img_pub.unregister()
       self.view_img_pub = None
       time.sleep(1)
@@ -776,7 +786,7 @@ class NepiPointcloudViewerApp(object):
       if topic not in sel_topics:
           pc_sub = self.pc_subs_dict[topic]
           pc_sub.unregister()
-          nepi_msg.publishMsgInfo(self,"Pointcloud: " + topic + " unregistered")
+          self.msg_if.pub_info("Pointcloud: " + topic + " unregistered")
           unreg_topic_list.append(topic) # Can't change dictionary while looping through dictionary
     for topic in unreg_topic_list: 
           self.pc_subs_dict.pop(topic)
@@ -789,7 +799,7 @@ class NepiPointcloudViewerApp(object):
       else:
         primary_pc = "None"
       if primary_pc != "None":
-        nepi_msg.publishMsgInfo(self,"Primary pointcloud set to: " + primary_pc)
+        self.msg_if.pub_info("Primary pointcloud set to: " + primary_pc)
     nepi_ros.set_param(self,'~primary_pointcloud', primary_pc)
     self.pc_has_subscribers = (self.proc_pc_pub.get_num_connections() > 0)
     if self.view_img_pub is not None:
@@ -882,7 +892,7 @@ class NepiPointcloudViewerApp(object):
               o3d_pc_add = eval('self.' + topic_uid + '_pc')
               eval('self.' + topic_uid + '_lock').release()
             #else:
-              #nepi_msg.publishMsgInfo(self,"Combine pointcloud not registered yet: " + topic_puid)
+              #self.msg_if.pub_info("Combine pointcloud not registered yet: " + topic_puid)
             if ros_timestamp_add is not None:
               #pc_age = abs(current_time - ros_timestamp)
               #pc_age = pc_age.to_sec()
@@ -1002,7 +1012,7 @@ class NepiPointcloudViewerApp(object):
                 self.img_renderer = None
                 time.sleep(1)
               # Create point cloud renderer
-              nepi_msg.publishMsgWarn(self,"Creating new pointcloud renderer")
+              self.msg_if.pub_warn("Creating new pointcloud renderer")
               self.img_renderer = nepi_pc.create_img_renderer(img_width=img_width,img_height=img_height, fov=cam_fov, background = bg_color)
               self.img_renderer_mtl = nepi_pc.create_img_renderer_mtl(shader = "defaultLit")
               self.img_renderer = nepi_pc.remove_img_renderer_geometry(self.img_renderer)
@@ -1110,7 +1120,7 @@ class NepiPointcloudViewerApp(object):
   # Node Cleanup Function
   
   def cleanup_actions(self):
-    nepi_msg.publishMsgInfo(self,"Shutting down: Executing script cleanup actions")
+    self.msg_if.pub_info("Shutting down: Executing script cleanup actions")
 
 
 #########################################
