@@ -19,7 +19,7 @@ import os
 # ROS namespace setup
 NEPI_BASE_NAMESPACE = '/nepi/s2x/'
 #os.environ["ROS_NAMESPACE"] = NEPI_BASE_NAMESPACE[0:-1]
-import rospy
+
 
 import time
 import sys
@@ -157,56 +157,388 @@ class NepiPointcloudViewerApp(object):
     self.initCb(do_updates = False)
    
 
-   ## App Setup ########################################################
-
-    # Pointcloud Selection Setup ########################################################
-    sel_reset_controls_sub = rospy.Subscriber("~reset_controls", Empty, self.resetSelectionControlsCb, queue_size = 10)
-    sel_add_pc_sub = rospy.Subscriber('~add_pointcloud', String, self.addPointcloudCb, queue_size = 10)
-    sel_remove_pc_sub = rospy.Subscriber('~remove_pointcloud', String, self.removePointcloudCb, queue_size = 10)
-    sel_primary_pc_sub = rospy.Subscriber('~set_primary_pointcloud', String, self.setPrimaryPointcloudCb, queue_size = 10)
-    sel_age_filter_sub = rospy.Subscriber("~set_age_filter", Float32, self.setAgeFilterCb, queue_size = 10)
-    sel_upate_transform_sub = rospy.Subscriber('~update_transform', Frame3DTransformUpdate, self.updateTransformCb, queue_size = 10)
-    sel_remove_transform_sub = rospy.Subscriber('~remove_transform', String, self.removeTransformCb, queue_size = 10)
-    sel_combine_option = rospy.Subscriber('~set_combine_option', String, self.setCombineOptionCb, queue_size = 10)
-    sel_frame_3d_sub = rospy.Subscriber('~set_frame_3d', String, self.setFrame3dCb, queue_size = 10)
-
-    self.sel_status_pub = rospy.Publisher("~status", PointcloudSelectionStatus, queue_size=1, latch=True)
-
-    # Pointcloud Process Setup ########################################################
-    proc_reset_controls_sub = rospy.Subscriber("~process/reset_controls", Empty, self.resetProcessControlsCb, queue_size = 10)
-    proc_range_clip_sub = rospy.Subscriber('~process/set_clip_enable', Bool, self.clipEnableCb, queue_size = 10)
-    proc_set_clip_sel_topic_sub = rospy.Subscriber('~process/set_clip_selection', String, self.setClipSelectionCb, queue_size = 10)
-    proc_range_meters_sub = rospy.Subscriber('~process/set_range_clip_m', RangeWindow, self.setRangeMetersCb, queue_size = 10)
-    proc_set_clip_box_topic_sub = rospy.Subscriber('~process/set_clip_bounding_box3d_topic', String, self.setClipBoxTopicCb, queue_size = 10)
-    proc_voxel_downsample_size_sub = rospy.Subscriber("~process/set_voxel_downsample_size", Float32, self.setVoxelSizeCb, queue_size = 10)
-    proc_uniform_downsample_k_points_sub = rospy.Subscriber("~process/uniform_downsample_k_points", Int32, self.setUniformPointsCb, queue_size = 10) 
-    proc_outlier_removal_num_neighbors_sub = rospy.Subscriber("~process/outlier_removal_num_neighbors", Int32, self.setOutlierNumCb, queue_size = 10)
-
-
-    self.proc_status_pub = rospy.Publisher("~process/status", PointcloudProcessStatus, queue_size=1, latch=True)
-    self.proc_pc_pub = rospy.Publisher("~pointcloud", PointCloud2, queue_size=1)
-
-    self.view_status_pub = rospy.Publisher("~render/status", PointcloudRenderStatus, queue_size=1, latch=True)
-    time.sleep(1)
+   ## Node Setup ########################################################
 
 
 
-    # Pointcloud Render Subscribers ########################################################
-    view_reset_controls_sub = rospy.Subscriber("~render/reset_controls", Empty, self.resetRenderControlsCb, queue_size = 10)
-    view_image_size_sub = rospy.Subscriber("~render/set_image_size", ImageSize, self.setImageSizeCb, queue_size = 10)
-    view_range_ratios_sub = rospy.Subscriber("~render/set_range_ratios", RangeWindow, self.setRangeRatiosCb, queue_size = 10)
-    view_zoom_ratio_sub = rospy.Subscriber("~render/set_zoom_ratio", Float32, self.setZoomRatioCb, queue_size = 10)
-    view_rotate_ratio_sub = rospy.Subscriber("~render/set_rotate_ratio", Float32, self.setRotateRatioCb, queue_size = 10)
-    view_tilt_ratio_sub = rospy.Subscriber("~render/set_tilt_ratio", Float32, self.setTiltRatioCb, queue_size = 10)
-    view_cam_fov_sub = rospy.Subscriber("~render/set_camera_fov", Int32, self.setCamFovCb, queue_size = 10)
-    view_cam_view_sub = rospy.Subscriber("~render/set_camera_view", Vector3, self.setCamViewCb, queue_size = 10)
-    view_cam_position_sub = rospy.Subscriber("~render/set_camera_position", Vector3, self.setCamPositionCb, queue_size = 10)
-    view_cam_rotate_sub = rospy.Subscriber("~render/set_camera_rotation", Vector3, self.setCamRotationCb, queue_size = 10)
-    view_wbg_sub = rospy.Subscriber("~render/set_white_bg_enable", Bool, self.setWhiteBgCb, queue_size = 10)
-    render_enable_sub = rospy.Subscriber("~render/set_render_enable", Bool, self.setRenderEnableCb, queue_size = 10)
+    # Configs Config Dict ####################
+    self.CFGS_DICT = {
+            'init_callback': self.initCb,
+            'reset_callback': self.resetCb,
+            'factory_reset_callback': self.factoryResetCb,
+            'init_configs': True,
+            'namespace': self.node_namespace
+    }
 
-    self.save_cfg_if = SaveCfgIF(initCb=self.initCb, resetCb=self.resetCb,  factoryResetCb=self.factoryResetCb)
-    ready = self.save_cfg_if.wait_for_ready()
+    # Params Config Dict ####################
+    self.PARAMS_DICT = {
+        'selected_pointclouds': {
+            'namespace': self.node_namespace,
+            'factory_val': self.[]
+        },
+        'primary_pointcloud': {
+            'namespace': self.node_namespace,
+            'factory_val': "None"
+        },
+        'age_filter_s': {
+            'namespace': self.node_namespace,
+            'factory_val': self.Factory_Age_Filter_S
+        },
+        'transforms_dict': {
+            'namespace': self.node_namespace,
+            'factory_val': self.dict()
+        },
+        'combine_option': {
+            'namespace': self.node_namespace,
+            'factory_val': self.Factory_Combine_Option
+        },
+        'process/clip_enabled': {
+            'namespace': self.node_namespace,
+            'factory_val': self.Factory_Clip_Selection
+        },
+        'process/range_min_m': {
+            'process/clip_selection': self.node_namespace,
+            'factory_val': self.Factory_Clip_Min_Range_M
+        },
+        'process/range_max_m': {
+            'namespace': self.node_namespace,
+            'factory_val': self.Factory_Clip_Max_Range_M
+        },
+        'process/voxel_downsample_size': {
+            'namespace': self.node_namespace,
+            'factory_val': self.Factory_Voxel_DownSample_Size
+        },
+        'process/uniform_downsample_k_points': {
+            'namespace': self.node_namespace,
+            'factory_val': self.FACTORY_PUB_RATE_HZ
+        },
+        'process/uniform_downsample_k_points': {
+            'namespace': self.node_namespace,
+            'factory_val': self.Factory_Uniform_DownSample_K_Points
+        },
+        'process/outlier_removal_num_neighbors': {
+            'namespace': self.node_namespace,
+            'factory_val': self.Factory_Outlier_Removal_Num_Neighbors
+        },
+        'frame_3d': {
+            'namespace': self.node_namespace,
+            'factory_val': self.Factory_Frame_3d
+        },
+        'render/image_width': {
+            'namespace': self.node_namespace,
+            'factory_val': self.Factory_Image_Width
+        },
+        'render/image_height': {
+            'namespace': self.node_namespace,
+            'factory_val': self.Factory_Image_Height
+        },
+        'render/start_range_ratio': {
+            'namespace': self.node_namespace,
+            'factory_val': self.Factory_Start_Range_Ratio
+        },
+        'render/zoom_ratio': {
+            'namespace': self.node_namespace,
+            'factory_val': self.Factory_Zoom_Ratio
+        },
+        'render/rotate_ratio': {
+            'namespace': self.node_namespace,
+            'factory_val': self.Factory_Rotate_Ratio
+        },
+        'render/tilt_ratio': {
+            'namespace': self.node_namespace,
+            'factory_val': self.Factory_Tilt_Ratio
+        },
+        'render/cam_fov': {
+            'namespace': self.node_namespace,
+            'factory_val': self.Factory_Cam_FOV
+        },
+        'render/cam_view': {
+            'namespace': self.node_namespace,
+            'factory_val': self.Factory_Cam_View
+        },
+        'render/cam_pos': {
+            'namespace': self.node_namespace,
+            'factory_val': self.Factory_Cam_Pos
+        },
+        'render/cam_rot': {
+            'namespace': self.node_namespace,
+            'factory_val': self.Factory_Cam_Rot
+        },
+        'render/use_wbg': {
+            'namespace': self.node_namespace,
+            'factory_val': False
+        },
+        'render/use_wbg': {
+            'namespace': self.node_namespace,
+            'factory_val': self.Factory_Render_Enable
+        }
+
+    }
+
+    # Publishers Config Dict ####################
+    self.PUBS_DICT = {
+        'sel_status_pub': {
+            'namespace': self.node_namespace,
+            'topic': 'status',
+            'msg': PointcloudSelectionStatus,
+            'qsize': 1,
+            'latch': True
+        },
+        'sel_status_pub': {
+            'namespace': self.node_namespace,
+            'topic': 'status',
+            'msg': PointcloudSelectionStatus,
+            'qsize': 1,
+            'latch': True
+        },
+        'proc_pc_pub': {
+            'namespace': self.node_namespace,
+            'topic': 'pointcloud',
+            'msg': PointCloud2,
+            'qsize': 1,
+            'latch': True
+        },
+        'view_status_pub': {
+            'namespace': self.node_namespace,
+            'topic': 'render/status',
+            'msg': PointcloudRenderStatus,
+            'qsize': 1,
+            'latch': True
+        }
+    }
+
+    # Subscribers Config Dict ####################
+    self.SUBS_DICT = {
+       'reset_controls': {
+            'namespace': self.node_namespace,
+            'topic': 'reset_controls',
+            'msg': Empty,
+            'qsize': 10,
+            'callback': self.resetSelectionControlsCb, 
+            'callback_args': ()
+        },
+        'add_pointcloud': {
+            'namespace': self.node_namespace,
+            'topic': 'add_pointcloud',
+            'msg': String,
+            'qsize': 10,
+            'callback': self.addPointcloudCb, 
+            'callback_args': ()
+        },
+        'remove_pointcloud': {
+            'namespace': self.node_namespace,
+            'topic': 'remove_pointcloud',
+            'msg': String,
+            'qsize': 10,
+            'callback': self.removePointcloudCb, 
+            'callback_args': ()
+        },
+        'age_filter': {
+            'namespace': self.node_namespace,
+            'topic': 'set_age_filter',
+            'msg': Float32,
+            'qsize': 10,
+            'callback': self.setAgeFilterCb, 
+            'callback_args': ()
+        },
+        'set_primary_pointcloud': {
+            'namespace': self.node_namespace,
+            'topic': 'set_primary_pointcloud',
+            'msg': String,
+            'qsize': 10,
+            'callback': self.setPrimaryPointcloudCb, 
+            'callback_args': ()
+        },
+        'update_transform': {
+            'namespace': self.node_namespace,
+            'topic': 'update_transform',
+            'msg': Frame3DTransformUpdate,
+            'qsize': 10,
+            'callback': self.updateTransformCb, 
+            'callback_args': ()
+        },
+        'reset_controls': {
+            'namespace': self.node_namespace,
+            'topic': 'process/reset_controls',
+            'msg': Empty,
+            'qsize': 10,
+            'callback': self.resetProcessControlsCb, 
+            'callback_args': ()
+        },
+        'set_clip_enable': {
+            'namespace': self.node_namespace,
+            'topic': 'process/set_clip_enable',
+            'msg': Bool,
+            'qsize': 10,
+            'callback': self.clipEnableCb, 
+            'callback_args': ()
+        },
+        'clip_selection': {
+            'namespace': self.node_namespace,
+            'topic': 'process/set_clip_selection',
+            'msg': String,
+            'qsize': 10,
+            'callback': self.setClipSelectionCb, 
+            'callback_args': ()
+        },
+
+       'range_clip_m': {
+            'namespace': self.node_namespace,
+            'topic': 'process/set_range_clip_m',
+            'msg': RangeWindow,
+            'qsize': 10,
+            'callback': self.setRangeMetersCb, 
+            'callback_args': ()
+        },
+        'clip_bounding_box3d_topic': {
+            'namespace': self.node_namespace,
+            'topic': 'process/set_clip_bounding_box3d_topic',
+            'msg': String,
+            'qsize': 10,
+            'callback': self.setClipBoxTopicCb, 
+            'callback_args': ()
+        },
+        'voxel_downsample_size': {
+            'namespace': self.node_namespace,
+            'topic': 'process/set_voxel_downsample_size',
+            'msg': Float32,
+            'qsize': 10,
+            'callback': self.setVoxelSizeCb, 
+            'callback_args': ()
+        },
+        'downsample_k_points': {
+            'namespace': self.node_namespace,
+            'topic': 'process/uniform_downsample_k_points',
+            'msg': Int32,
+            'qsize': 10,
+            'callback': self.setUniformPointsCb, 
+            'callback_args': ()
+        },
+        'outlier_removal': {
+            'namespace': self.node_namespace,
+            'topic': 'process/outlier_removal_num_neighbors',
+            'msg': String,
+            'qsize': 10,
+            'callback': self.setOutlierNumCb, 
+            'callback_args': ()
+        },
+
+        'render_reset_controls': {
+            'namespace': self.node_namespace,
+            'topic': 'render/reset_controls',
+            'msg': Empty,
+            'qsize': 10,
+            'callback': self.resetRenderControlsCb, 
+            'callback_args': ()
+        },
+        'set_image_size': {
+            'namespace': self.node_namespace,
+            'topic': 'render/set_image_size',
+            'msg': ImageSize,
+            'qsize': 10,
+            'callback': self.setImageSizeCb, 
+            'callback_args': ()
+        },
+        'set_range_ratios': {
+            'namespace': self.node_namespace,
+            'topic': 'render/set_range_ratios',
+            'msg': RangeWindow,
+            'qsize': 10,
+            'callback': self.setRangeRatiosCb, 
+            'callback_args': ()
+        },
+        'set_zoom_ratio': {
+            'namespace': self.node_namespace,
+            'topic': 'render/set_zoom_ratio',
+            'msg': Float32,
+            'qsize': 10,
+            'callback': self.setZoomRatioCb, 
+            'callback_args': ()
+        },
+        'set_rotate_ratio': {
+            'namespace': self.node_namespace,
+            'topic': 'render/set_rotate_ratio',
+            'msg': Float32,
+            'qsize': 10,
+            'callback': self.setRotateRatioCb, 
+            'callback_args': ()
+        },
+        'set_tilt_ratio': {
+            'namespace': self.node_namespace,
+            'topic': 'render/set_tilt_ratio',
+            'msg': Float32,
+            'qsize': 10,
+            'callback': self.setTiltRatioCb, 
+            'callback_args': ()
+        },
+        'set_camera_fov': {
+            'namespace': self.node_namespace,
+            'topic': 'render/set_camera_fov',
+            'msg': Int32,
+            'qsize': 10,
+            'callback': self.setCamFovCb, 
+            'callback_args': ()
+        },
+        'set_camera_view': {
+            'namespace': self.node_namespace,
+            'topic': 'render/set_camera_view',
+            'msg': Vector3,
+            'qsize': 10,
+            'callback': self.setCamViewCb, 
+            'callback_args': ()
+        },
+        'set_camera_position': {
+            'namespace': self.node_namespace,
+            'topic': 'render/set_camera_position',
+            'msg': Vector3,
+            'qsize': 10,
+            'callback': self.setCamPositionCb, 
+            'callback_args': ()
+        },
+        'set_camera_rotation': {
+            'namespace': self.node_namespace,
+            'topic': 'render/set_camera_rotation',
+            'msg': Vector3,
+            'qsize': 10,
+            'callback': self.setCamRotationCb, 
+            'callback_args': ()
+        },
+        'set_white_bg_enable': {
+            'namespace': self.node_namespace,
+            'topic': 'render/set_white_bg_enable',
+            'msg': Bool,
+            'qsize': 10,
+            'callback': self.setWhiteBgCb, 
+            'callback_args': ()
+        },
+        'set_render_enable': {
+            'namespace': self.node_namespace,
+            'topic': 'render/set_render_enable',
+            'msg': Bool,
+            'qsize': 10,
+            'callback': self.setRenderEnableCb, 
+            'callback_args': ()
+        }
+    }
+
+
+    # Create Node Class ####################
+    self.node_if = NodeClassIF(self,
+                    configs_dict = self.CFGS_DICT,
+                    params_dict = self.PARAMS_DICT,
+                    pubs_dict = self.PUBS_DICT,
+                    subs_dict = self.SUBS_DICT,
+                    log_class_name = True
+    )
+
+    ready = self.node_if.wait_for_ready()
+
+
+    add_all_sub = self.nepi_ros.create_subscriber('~add_all_pcd_files', Empty, self.addAllFilesCb, queue_size = 10)
+    remove_all_sub = self.nepi_ros.create_subscriber('~remove_all_pcd_files', Empty, self.removeAllFilesCb, queue_size = 10)
+    add_file_sub = self.nepi_ros.create_subscriber('~add_pcd_file', String, self.addFileCb, queue_size = 10)
+    remove_file_sub = self.nepi_ros.create_subscriber('~remove_pcd_file', String, self.removeFileCb, queue_size = 10)
+
 
     ##############################
     self.initCb(do_updates = True)
@@ -238,39 +570,6 @@ class NepiPointcloudViewerApp(object):
 ## App Callbacks
 
   def factoryResetCb(self):
-    nepi_ros.set_param(self,'~selected_pointclouds', [])
-    nepi_ros.set_param(self,'~primary_pointcloud', "None")
-    nepi_ros.set_param(self,'~age_filter_s', Factory_Age_Filter_S)
-    nepi_ros.set_param(self,'~frame_3d', Factory_Frame_3d)
-    nepi_ros.set_param(self,'~transforms_dict', dict())
-    nepi_ros.set_param(self,'~combine_option', Factory_Combine_Option)
-    
-    nepi_ros.set_param(self,'~process/clip_enabled', Factory_Clip_Enabled)
-    nepi_ros.set_param(self,'~process/clip_selection', Factory_Clip_Selection)
-    nepi_ros.set_param(self,'~process/range_min_m',  Factory_Clip_Min_Range_M)
-    nepi_ros.set_param(self,'~process/range_max_m',  Factory_Clip_Max_Range_M)
-    self.bounding_box3d_topic = "NONE"
-    nepi_ros.set_param(self,'~process/voxel_downsample_size',Factory_Voxel_DownSample_Size)
-    nepi_ros.set_param(self,'~process/uniform_downsample_k_points',Factory_Uniform_DownSample_K_Points)
-    nepi_ros.set_param(self,'~process/outlier_removal_num_neighbors',Factory_Outlier_Removal_Num_Neighbors)
-
-
-    nepi_ros.set_param(self,'~render/image_width',  Factory_Image_Width)
-    nepi_ros.set_param(self,'~render/image_height', Factory_Image_Height)
-    nepi_ros.set_param(self,'~render/start_range_ratio',  Factory_Start_Range_Ratio)
-    nepi_ros.set_param(self,'~render/stop_range_ratio', Factory_Stop_Range_Ratio)
-    nepi_ros.set_param(self,'~render/zoom_ratio', Factory_Zoom_Ratio)
-    nepi_ros.set_param(self,'~render/rotate_ratio', Factory_Rotate_Ratio)
-    nepi_ros.set_param(self,'~render/tilt_ratio', Factory_Tilt_Ratio)
-    
-    nepi_ros.set_param(self,'~render/cam_fov', Factory_Cam_FOV)
-    nepi_ros.set_param(self,'~render/cam_view', Factory_Cam_View)
-    nepi_ros.set_param(self,'~render/cam_pos', Factory_Cam_Pos)
-    nepi_ros.set_param(self,'~render/cam_rot', Factory_Cam_Rot)
-
-    nepi_ros.set_param(self,'~render/use_wbg', False )
-    nepi_ros.set_param(self,'~render/render_enable', Factory_Render_Enable)
-   
     self.publish_selection_status()
     self.publish_process_status()
     self.publish_render_status()
@@ -282,18 +581,18 @@ class NepiPointcloudViewerApp(object):
     self.resetSelectionControls()
   
   def resetSelectionControls(self,do_updates = True):
-    nepi_ros.set_param(self,'~selected_pointclouds', self.init_selected_pointclouds)
-    nepi_ros.set_param(self,'~primary_pointcloud', self.init_primary_pointcloud)
-    nepi_ros.set_param(self,'~age_filter_s', self.init_age_filter_s)
-    nepi_ros.set_param(self,'~transforms_dict', self.init_transforms_dict)
-    nepi_ros.set_param(self,'~combine_option', self.init_combine_option)
+    self.node_if.set_param('selected_pointclouds', self.init_selected_pointclouds)
+    self.node_if.set_param('primary_pointcloud', self.init_primary_pointcloud)
+    self.node_if.set_param('age_filter_s', self.init_age_filter_s)
+    self.node_if.set_param('transforms_dict', self.init_transforms_dict)
+    self.node_if.set_param('combine_option', self.init_combine_option)
     if do_updates:
       self.publish_process_status()
 
   def addPointcloudCb(self,msg):
     ##self.msg_if.pub_info(str(msg))
     pc_topic = msg.data
-    pc_topics = nepi_ros.get_param(self,'~selected_pointclouds',self.init_selected_pointclouds)
+    pc_topics = self.node_if.get_param('selected_pointclouds')
     add_topic = False
     if nepi_ros.check_for_topic(pc_topic):
       if pc_topic not in pc_topics:
@@ -301,28 +600,28 @@ class NepiPointcloudViewerApp(object):
       if add_topic:
         self.msg_if.pub_info("Adding Pointcloud topic to registered topics: " + pc_topic)
         pc_topics.append(pc_topic)
-    nepi_ros.set_param(self,'~selected_pointclouds',pc_topics)
+    self.node_if.set_param('selected_pointclouds',pc_topics)
     self.publish_selection_status()
 
   def removePointcloudCb(self,msg):
     ##self.msg_if.pub_info(str(msg))
     pc_topic = msg.data
-    pc_topics = nepi_ros.get_param(self,'~selected_pointclouds',self.init_selected_pointclouds)
+    pc_topics = self.node_if.get_param('selected_pointclouds')
     remove_topic = False
     if pc_topic in pc_topics:
       remove_topic = True
     if remove_topic:
       self.msg_if.pub_info("Removing Pointcloud topic from registered topics: " + pc_topic)
       pc_topics.remove(pc_topic)
-    nepi_ros.set_param(self,'~selected_pointclouds',pc_topics)
+    self.node_if.set_param('selected_pointclouds',pc_topics)
     self.publish_selection_status()
 
   def setPrimaryPointcloudCb(self,msg):
     ##self.msg_if.pub_info(str(msg))
     pc_topic = msg.data
-    pc_topics = nepi_ros.get_param(self,'~selected_pointclouds',self.init_primary_pointcloud)
+    pc_topics = self.node_if.get_param('selected_pointclouds')
     if pc_topic in pc_topics:
-      nepi_ros.set_param(self,'~primary_pointcloud',pc_topic)
+      self.node_if.set_param('primary_pointcloud',pc_topic)
     else:
       self.msg_if.pub_info("Ignoring Set Primary Pointcloud as it is not in selected list")
     self.publish_selection_status()
@@ -331,7 +630,7 @@ class NepiPointcloudViewerApp(object):
     #self.msg_if.pub_info(str(msg))
     val = msg.data
     if val >= 0:
-      nepi_ros.set_param(self,'~age_filter_s',val)
+      self.node_if.set_param('age_filter_s',val)
     self.publish_selection_status()
 
 
@@ -349,17 +648,17 @@ class NepiPointcloudViewerApp(object):
   def removePointcloudCb(self,msg):
     #self.msg_if.pub_info(str(msg))
     pc_topic = msg.data
-    pc_topics = nepi_ros.get_param(self,'~selected_pointclouds',self.init_selected_pointclouds)
+    pc_topics = self.node_if.get_param('selected_pointclouds')
     if pc_topic in pc_topics:
       pc_topics.remove(pc_topic)
-    nepi_ros.set_param(self,'~selected_pointclouds',pc_topics)
+    self.node_if.set_param('selected_pointclouds',pc_topics)
     self.publish_selection_status()   
 
   def setCombineOptionCb(self, msg):
       #self.msg_if.pub_info(str(msg))
       combine_option = msg.data
       if combine_option in self.combine_options:
-        nepi_ros.set_param(self,'~combine_option', combine_option)
+        self.node_if.set_param('combine_option', combine_option)
       else:
         self.msg_if.pub_info('Pointcloud combine option: ' + combine_option + ' not valid option')
       self.publish_selection_status()
@@ -371,28 +670,28 @@ class NepiPointcloudViewerApp(object):
     self.resetProcessControls()
   
   def resetProcessControls(self,do_updates = True):
-    nepi_ros.set_param(self,'~process/clip_enabled', self.init_proc_clip_enabled )
-    nepi_ros.set_param(self,'~process/clip_selection', self.init_proc_clip_selection )
-    nepi_ros.set_param(self,'~process/range_min_m', self.init_proc_range_min_m)
-    nepi_ros.set_param(self,'~process/range_max_m', self.init_proc_range_max_m)
+    self.node_if.set_param('process/clip_enabled', self.init_proc_clip_enabled )
+    self.node_if.set_param('process/clip_selection', self.init_proc_clip_selection )
+    self.node_if.set_param('process/range_min_m', self.init_proc_range_min_m)
+    self.node_if.set_param('process/range_max_m', self.init_proc_range_max_m)
     self.bounding_box3d_topic = "NONE"
-    nepi_ros.set_param(self,'~process/voxel_downsample_size',self.init_proc_voxel_downsample_size)
-    nepi_ros.set_param(self,'~process/uniform_downsample_k_points',self.init_proc_uniform_downsample_k_points)
-    nepi_ros.set_param(self,'~process/outlier_removal_num_neighbors',self.init_proc_outlier_removal_num_neighbors)   
+    self.node_if.set_param('process/voxel_downsample_size',self.init_proc_voxel_downsample_size)
+    self.node_if.set_param('process/uniform_downsample_k_points',self.init_proc_uniform_downsample_k_points)
+    self.node_if.set_param('process/outlier_removal_num_neighbors',self.init_proc_outlier_removal_num_neighbors)   
     if do_updates:
       self.publish_process_status()
 
   def clipEnableCb(self,msg):
     #self.msg_if.pub_info(str(msg))
     new_enable = msg.data
-    nepi_ros.set_param(self,'~process/clip_enabled', new_enable)
+    self.node_if.set_param('process/clip_enabled', new_enable)
     self.publish_process_status()
 
   def setClipSelectionCb(self,msg):
     #self.msg_if.pub_info(str(msg))
     sel = msg.data
     if sel in self.clip_options:
-      nepi_ros.set_param(self,'~process/clip_selection', sel )
+      self.node_if.set_param('process/clip_selection', sel )
     self.publish_process_status()
 
   def setClipBoxTopicCb(self,msg):
@@ -403,7 +702,7 @@ class NepiPointcloudViewerApp(object):
       self.bounding_box3d_sub.Unregister()
       self.bounding_box3d_sub = None
     if topic != "NONE":
-      self.bounding_box3d_sub = rospy.Subscriber('~set_clip_target_topic', String, self.setClipTargetTopicCb, queue_size = 10)
+      self.bounding_box3d_sub = self.nepi_ros.create_subscriber('~set_clip_target_topic', String, self.setClipTargetTopicCb, queue_size = 10)
     self.bounding_box3d_msg = None
     self.publish_process_status()
 
@@ -412,29 +711,29 @@ class NepiPointcloudViewerApp(object):
     range_min_m = msg.start_range
     range_max_m = msg.stop_range
     if range_min_m < range_max_m:
-      nepi_ros.set_param(self,'~process/range_min_m', range_min_m)
-      nepi_ros.set_param(self,'~process/range_max_m', range_max_m)
+      self.node_if.set_param('process/range_min_m', range_min_m)
+      self.node_if.set_param('process/range_max_m', range_max_m)
     self.publish_process_status()
 
   def setVoxelSizeCb(self,msg):
     #self.msg_if.pub_info(str(msg))
     val = msg.data
     if val >= 0:
-      nepi_ros.set_param(self,'~process/voxel_downsample_size',val)
+      self.node_if.set_param('process/voxel_downsample_size',val)
     self.publish_process_status()
 
   def setUniformPointsCb(self,msg):
     #self.msg_if.pub_info(str(msg))
     val = msg.data
     if val >= 0:
-      nepi_ros.set_param(self,'~process/uniform_downsample_k_points',val)
+      self.node_if.set_param('process/uniform_downsample_k_points',val)
     self.publish_process_status()
 
   def setOutlierNumCb(self,msg):
     #self.msg_if.pub_info(str(msg))
     val = msg.data
     if val >= 0:
-      nepi_ros.set_param(self,'~process/outlier_removal_num_neighbors',val)
+      self.node_if.set_param('process/outlier_removal_num_neighbors',val)
     self.publish_process_status()
 
   def setFrame3dCb(self, msg):
@@ -442,7 +741,7 @@ class NepiPointcloudViewerApp(object):
     frame_3d = msg.data
     frame3d_list = self.frame3d_list
     if frame_3d in frame3d_list:
-      nepi_ros.set_param(self,'~frame_3d',frame_3d)
+      self.node_if.set_param('frame_3d',frame_3d)
     self.publish_process_status()
 
 ###################
@@ -452,19 +751,19 @@ class NepiPointcloudViewerApp(object):
     self.resetRenderControls()
 
   def resetRenderControls(self,do_updates = True):
-    nepi_ros.set_param(self,'~render/image_width',  self.init_image_width)
-    nepi_ros.set_param(self,'~render/image_height', self.init_image_height)
-    nepi_ros.set_param(self,'~render/start_range_ratio', self.init_view_start_range_ratio)
-    nepi_ros.set_param(self,'~render/stop_range_ratio', self.init_view_stop_range_ratio)
-    nepi_ros.set_param(self,'~render/zoom_ratio',self.init_view_zoom_ratio)
-    nepi_ros.set_param(self,'~render/rotate_ratio',self.init_view_rotate_ratio)
-    nepi_ros.set_param(self,'~render/tilt_ratio',self.init_view_tilt_ratio)
-    nepi_ros.set_param(self,'~render/cam_fov', self.init_view_cam_fov)
-    nepi_ros.set_param(self,'~render/cam_view',self.init_view_cam_view)
-    nepi_ros.set_param(self,'~render/cam_pos',self.init_view_cam_pos)
-    nepi_ros.set_param(self,'~render/cam_rot',self.init_view_cam_rot)
-    nepi_ros.set_param(self,'~render/use_wbg', self.init_use_wbg )
-    nepi_ros.set_param(self,'~render/render_enable', self.init_render_enable)
+    self.node_if.set_param('render/image_width',  self.init_image_width)
+    self.node_if.set_param('render/image_height', self.init_image_height)
+    self.node_if.set_param('render/start_range_ratio', self.init_view_start_range_ratio)
+    self.node_if.set_param('render/stop_range_ratio', self.init_view_stop_range_ratio)
+    self.node_if.set_param('render/zoom_ratio',self.init_view_zoom_ratio)
+    self.node_if.set_param('render/rotate_ratio',self.init_view_rotate_ratio)
+    self.node_if.set_param('render/tilt_ratio',self.init_view_tilt_ratio)
+    self.node_if.set_param('render/cam_fov', self.init_view_cam_fov)
+    self.node_if.set_param('render/cam_view',self.init_view_cam_view)
+    self.node_if.set_param('render/cam_pos',self.init_view_cam_pos)
+    self.node_if.set_param('render/cam_rot',self.init_view_cam_rot)
+    self.node_if.set_param('render/use_wbg', self.init_use_wbg )
+    self.node_if.set_param('render/render_enable', self.init_render_enable)
     
     if do_updates:
       self.publish_render_status()
@@ -475,8 +774,8 @@ class NepiPointcloudViewerApp(object):
     width = msg.width
     height = msg.height
     if width > 100 and width < 5000 and height > 100 and height < 5000:
-      nepi_ros.set_param(self,'~render/image_width',  width)
-      nepi_ros.set_param(self,'~render/image_height', height)
+      self.node_if.set_param('render/image_width',  width)
+      self.node_if.set_param('render/image_height', height)
     self.publish_render_status()
 
   def setImageSizeIndCb(self,msg):
@@ -488,36 +787,36 @@ class NepiPointcloudViewerApp(object):
       width = float(size__split[0])
       height = float(size_split[2])
       if width > 100 and width < 5000 and height > 100 and height < 5000:
-        nepi_ros.set_param(self,'~render/image_width',  width)
-        nepi_ros.set_param(self,'~render/image_height', height)
+        self.node_if.set_param('render/image_width',  width)
+        self.node_if.set_param('render/image_height', height)
     self.publish_render_status()
 
   def setZoomRatioCb(self,msg):
     #self.msg_if.pub_info(str(msg))
     new_val = msg.data
     if new_val >= 0 and new_val <= 1 :
-      nepi_ros.set_param(self,'~render/zoom_ratio',new_val)
+      self.node_if.set_param('render/zoom_ratio',new_val)
     self.publish_render_status()
 
   def setZoomRatioCb(self,msg):
     #self.msg_if.pub_info(str(msg))
     new_val = msg.data
     if new_val >= 0 and new_val <= 1 :
-      nepi_ros.set_param(self,'~render/zoom_ratio',new_val)
+      self.node_if.set_param('render/zoom_ratio',new_val)
     self.publish_render_status()
 
   def setRotateRatioCb(self,msg):
     #self.msg_if.pub_info(str(msg))
     new_val = msg.data
     if new_val >= 0 and new_val <= 1 :
-      nepi_ros.set_param(self,'~render/rotate_ratio',new_val)
+      self.node_if.set_param('render/rotate_ratio',new_val)
     self.publish_render_status()
 
   def setTiltRatioCb(self,msg):
     #self.msg_if.pub_info(str(msg))
     new_val = msg.data
     if new_val >= 0 and new_val <= 1 :
-      nepi_ros.set_param(self,'~render/tilt_ratio',new_val)
+      self.node_if.set_param('render/tilt_ratio',new_val)
     self.publish_render_status()
 
   def setCamFovCb(self,msg):
@@ -527,7 +826,7 @@ class NepiPointcloudViewerApp(object):
       new_val = 100
     if new_val < 30:
       new_val = 30
-    nepi_ros.set_param(self,'~render/cam_fov',new_val)
+    self.node_if.set_param('render/cam_fov',new_val)
     self.publish_render_status()
 
   def setCamViewCb(self,msg):
@@ -536,7 +835,7 @@ class NepiPointcloudViewerApp(object):
     new_array.append(msg.x)
     new_array.append(msg.y)
     new_array.append(msg.z)
-    nepi_ros.set_param(self,'~render/cam_view',new_array)
+    self.node_if.set_param('render/cam_view',new_array)
     self.publish_render_status()
 
   def setCamPositionCb(self,msg):
@@ -545,7 +844,7 @@ class NepiPointcloudViewerApp(object):
     new_array.append(msg.x)
     new_array.append(msg.y)
     new_array.append(msg.z)
-    nepi_ros.set_param(self,'~render/cam_pos',new_array)
+    self.node_if.set_param('render/cam_pos',new_array)
     self.publish_render_status()
 
   def setCamRotationCb(self,msg):
@@ -554,7 +853,7 @@ class NepiPointcloudViewerApp(object):
     new_array.append(msg.x)
     new_array.append(msg.y)
     new_array.append(msg.z)
-    nepi_ros.set_param(self,'~render/cam_rot',new_array)
+    self.node_if.set_param('render/cam_rot',new_array)
     self.publish_render_status()
   
 
@@ -563,19 +862,19 @@ class NepiPointcloudViewerApp(object):
     min_ratio = msg.start_range
     max_ratio = msg.stop_range
     if min_ratio < max_ratio and min_ratio >= 0 and max_ratio <= 1:
-      nepi_ros.set_param(self,'~render/start_range_ratio', min_ratio)
-      nepi_ros.set_param(self,'~render/stop_range_ratio', max_ratio)
+      self.node_if.set_param('render/start_range_ratio', min_ratio)
+      self.node_if.set_param('render/stop_range_ratio', max_ratio)
     self.publish_render_status()
 
 
   def setWhiteBgCb(self,msg):
     enable = msg.data
-    nepi_ros.set_param(self,'~render/use_wbg', enable)
+    self.node_if.set_param('render/use_wbg', enable)
     self.publish_render_status()
 
   def setRenderEnableCb(self,msg):
     render_enable = msg.data
-    nepi_ros.set_param(self,'~render/render_enable', render_enable)
+    self.node_if.set_param('render/render_enable', render_enable)
     self.publish_render_status()
 
 
@@ -585,48 +884,41 @@ class NepiPointcloudViewerApp(object):
 
   def initCb(self,do_updates = False):
       self.msg_if.pub_info("Reseting init values to param values")
-      self.init_selected_pointclouds = nepi_ros.get_param(self,'~selected_pointclouds', [])
-      self.init_primary_pointcloud = nepi_ros.get_param(self,'~primary_pointcloud', "None")
-      self.init_age_filter_s = nepi_ros.get_param(self,'~age_filter_s', Factory_Age_Filter_S)
-      self.init_transforms_dict = nepi_ros.get_param(self,'~transforms_dict',dict())
-      self.init_combine_option = nepi_ros.get_param(self,'~combine_option', Factory_Combine_Option)
+      self.init_selected_pointclouds = self.node_if.get_param('selected_pointclouds')
+      self.init_primary_pointcloud = self.node_if.get_param('primary_pointcloud')
+      self.init_age_filter_s = self.node_if.get_param('age_filter_s')
+      self.init_transforms_dict = self.node_if.get_param('transforms_dict')
+      self.init_combine_option = self.node_if.get_param('combine_option')
     
-      self.init_proc_clip_enabled = nepi_ros.get_param(self,'~process/clip_enabled', Factory_Clip_Enabled)
-      self.init_proc_clip_selection = nepi_ros.get_param(self,'~process/clip_selection', Factory_Clip_Selection )
-      self.init_proc_range_min_m = nepi_ros.get_param(self,'~process/range_min_m',  Factory_Clip_Min_Range_M)
-      self.init_proc_range_max_m = nepi_ros.get_param(self,'~process/range_max_m',  Factory_Clip_Max_Range_M)
-      self.init_proc_voxel_downsample_size = nepi_ros.get_param(self,'~process/voxel_downsample_size',Factory_Voxel_DownSample_Size)
-      self.init_proc_uniform_downsample_k_points = nepi_ros.get_param(self,'~process/uniform_downsample_k_points',Factory_Uniform_DownSample_K_Points)
-      self.init_proc_outlier_removal_num_neighbors = nepi_ros.get_param(self,'~process/outlier_removal_num_neighbors',Factory_Outlier_Removal_Num_Neighbors)
-      self.init_proc_frame_3d = nepi_ros.get_param(self,'~frame_3d', Factory_Frame_3d)
+      self.init_proc_clip_enabled = self.node_if.get_param('process/clip_enabled')
+      self.init_proc_clip_selection = self.node_if.get_param('process/clip_selection')
+      self.init_proc_range_min_m = self.node_if.get_param('process/range_min_m')
+      self.init_proc_range_max_m = self.node_if.get_param('process/range_max_m')
+      self.init_proc_voxel_downsample_size = self.node_if.get_param('process/voxel_downsample_size')
+      self.init_proc_uniform_downsample_k_points = self.node_if.get_param('process/uniform_downsample_k_points')
+      self.init_proc_outlier_removal_num_neighbors = self.node_if.get_param('process/outlier_removal_num_neighbors')
+      self.init_proc_frame_3d = self.node_if.get_param('frame_3d')
     
-      self.init_image_width = nepi_ros.get_param(self,'~render/image_width',  Factory_Image_Width)
-      self.init_image_height = nepi_ros.get_param(self,'~render/image_height', Factory_Image_Height)
-      self.init_view_start_range_ratio = nepi_ros.get_param(self,'~render/start_range_ratio',  Factory_Start_Range_Ratio)
-      self.init_view_stop_range_ratio = nepi_ros.get_param(self,'~render/stop_range_ratio', Factory_Stop_Range_Ratio)
-      self.init_view_zoom_ratio = nepi_ros.get_param(self,'~render/zoom_ratio', Factory_Zoom_Ratio)
-      self.init_view_rotate_ratio = nepi_ros.get_param(self,'~render/rotate_ratio', Factory_Rotate_Ratio)
-      self.init_view_tilt_ratio = nepi_ros.get_param(self,'~render/tilt_ratio', Factory_Tilt_Ratio)
+      self.init_image_width = self.node_if.get_param('render/image_width')
+      self.init_image_height = self.node_if.get_param('render/image_height')
+      self.init_view_start_range_ratio = self.node_if.get_param('render/start_range_ratio')
+      self.init_view_stop_range_ratio = self.node_if.get_param('render/stop_range_ratio')
+      self.init_view_zoom_ratio = self.node_if.get_param('render/zoom_ratio')
+      self.init_view_rotate_ratio = self.node_if.get_param('render/rotate_ratio')
+      self.init_view_tilt_ratio = self.node_if.get_param('render/tilt_ratio')
 
-      self.init_view_cam_fov = nepi_ros.get_param(self,'~render/cam_fov', Factory_Cam_FOV )
-      self.init_view_cam_view = nepi_ros.get_param(self,'~render/cam_view', Factory_Cam_View)
-      self.init_view_cam_pos = nepi_ros.get_param(self,'~render/cam_pos', Factory_Cam_Pos)
-      self.init_view_cam_rot = nepi_ros.get_param(self,'~render/cam_rot', Factory_Cam_Rot)
+      self.init_view_cam_fov = self.node_if.get_param('render/cam_fov')
+      self.init_view_cam_view = self.node_if.get_param('render/cam_view')
+      self.init_view_cam_pos = self.node_if.get_param('render/cam_pos')
+      self.init_view_cam_rot = self.node_if.get_param('render/cam_rot')
 
-      self.init_use_wbg = nepi_ros.get_param(self,'~render/use_wbg', False )
-      self.init_render_enable = nepi_ros.get_param(self,'~render/render_enable', Factory_Render_Enable)
+      self.init_use_wbg = self.node_if.get_param('render/use_wbg', False )
+      self.init_render_enable = self.node_if.get_param('render/render_enable', Factory_Render_Enable)
       if do_updates == True:
         self.resetCb(do_updates)
 
   def resetCb(self,do_updates = True):
       self.msg_if.pub_info("Reseting param values to init values")
-      '''
-      nepi_ros.set_param(self,'~selected_pointclouds', self.init_selected_pointclouds)
-      nepi_ros.set_param(self,'~process/clip_selection', self.init_proc_clip_selection )
-      nepi_ros.set_param(self,'~age_filter_s',  self.init_age_filter_s)
-      nepi_ros.set_param(self,'~transforms_dict', self.init_transforms_dict)
-      nepi_ros.set_param(self,'~combine_option',  self.init_combine_option)
-      '''
       self.resetSelectionControls(do_updates)
       self.resetProcessControls(do_updates)
       self.resetRenderControls(do_updates)
@@ -642,122 +934,122 @@ class NepiPointcloudViewerApp(object):
   def publish_selection_status(self):
     status_msg = PointcloudSelectionStatus()
 
-    pointcloud_topic_list = nepi_ros.get_param(self,'~selected_pointclouds',self.init_selected_pointclouds)
+    pointcloud_topic_list = self.node_if.get_param('selected_pointclouds')
     status_msg.selected_pointcloud_topics = (pointcloud_topic_list)
 
-    primary_pointcloud = nepi_ros.get_param(self,'~primary_pointcloud', self.init_primary_pointcloud)
+    primary_pointcloud = self.node_if.get_param('primary_pointcloud')
     if primary_pointcloud == "None" and len(pointcloud_topic_list) > 0:
       primary_pointcloud = pointcloud_topic_list[0]
     elif primary_pointcloud != "None" and len(pointcloud_topic_list) == 0:
       primary_pointcloud = "None"
-    nepi_ros.set_param(self,'~primary_pointcloud', primary_pointcloud)
+    self.node_if.set_param('primary_pointcloud', primary_pointcloud)
     status_msg.primary_pointcloud_topic = primary_pointcloud
     status_msg.publishing_pointcloud_img = self.view_img_pub is not None
 
-    age_filter_s = nepi_ros.get_param(self,'~age_filter_s', self.init_age_filter_s)
+    age_filter_s = self.node_if.get_param('age_filter_s')
     status_msg.age_filter_s = age_filter_s
 
 
     status_msg.available_3d_frames = (self.frame3d_list)
-    status_msg.output_3d_frame = nepi_ros.get_param(self,'~frame_3d', self.init_proc_frame_3d) 
+    status_msg.output_3d_frame = self.node_if.get_param('frame_3d') 
 
-    transforms_dict = nepi_ros.get_param(self,'~transforms_dict',self.init_transforms_dict)
+    transforms_dict = self.node_if.get_param('transforms_dict')
     for pc_topic in pointcloud_topic_list:
       if pc_topic not in transforms_dict.keys():
         transforms_dict[pc_topic] = ZERO_TRANSFORM
-    nepi_ros.set_param(self,'~transforms_dict',transforms_dict)
+    self.node_if.set_param('transforms_dict',transforms_dict)
     [status_msg.transforms_topic_list,status_msg.transforms_list] = self.getFrame3DTransformsMsg()
 
     status_msg.combine_options = (self.combine_options)
-    status_msg.combine_option = nepi_ros.get_param(self,'~combine_option', self.init_combine_option)
+    status_msg.combine_option = self.node_if.get_param('combine_option')
 
     range_meters = RangeWindow()
     range_meters.start_range =   self.pc_min_range_m
     range_meters.stop_range =   self.pc_max_range_m
     status_msg.range_min_max_m = range_meters
 
-    self.sel_status_pub.publish(status_msg)
+    self.node_if.publish_pub('sel_status_pub', status_msg)
 
 
   def publish_process_status(self):
     status_msg = PointcloudProcessStatus()
 
-    status_msg.clip_enabled = nepi_ros.get_param(self,'~process/clip_enabled', self.init_proc_clip_enabled )
+    status_msg.clip_enabled = self.node_if.get_param('process/clip_enabled')
     status_msg.clip_options = self.clip_options
-    status_msg.clip_selection = nepi_ros.get_param(self,'~process/clip_selection', self.init_proc_clip_selection )
+    status_msg.clip_selection = self.node_if.get_param('process/clip_selection')
     range_meters = RangeWindow()
-    range_meters.start_range =   nepi_ros.get_param(self,'~process/range_min_m', self.init_proc_range_min_m)
-    range_meters.stop_range =   nepi_ros.get_param(self,'~process/range_max_m', self.init_proc_range_max_m)
+    range_meters.start_range =   self.node_if.get_param('process/range_min_m')
+    range_meters.stop_range =   self.node_if.get_param('process/range_max_m')
     status_msg.clip_meters = range_meters
 
     status_msg.clip_target_topic = self.bounding_box3d_topic
     
-    status_msg.voxel_downsample_size_m = nepi_ros.get_param(self,'~process/voxel_downsample_size',self.init_proc_voxel_downsample_size)
-    status_msg.uniform_downsample_points = nepi_ros.get_param(self,'~process/uniform_downsample_k_points',self.init_proc_uniform_downsample_k_points)
-    status_msg.outlier_k_points = nepi_ros.get_param(self,'~process/outlier_removal_num_neighbors',self.init_proc_outlier_removal_num_neighbors) 
+    status_msg.voxel_downsample_size_m = self.node_if.get_param('process/voxel_downsample_size')
+    status_msg.uniform_downsample_points = self.node_if.get_param('process/uniform_downsample_k_points')
+    status_msg.outlier_k_points = self.node_if.get_param('process/outlier_removal_num_neighbors') 
 
-    self.proc_status_pub.publish(status_msg)
+    self.node_if.publish_pub('proc_status_pub', status_msg)
 
   def publish_render_status(self):
     status_msg = PointcloudRenderStatus()
 
     status_msg.standard_image_sizes = (STANDARD_IMAGE_SIZES)
 
-    status_msg.image_width = nepi_ros.get_param(self,'~render/image_width',  self.init_image_width)
-    status_msg.image_height = nepi_ros.get_param(self,'~render/image_height', self.init_image_height)
+    status_msg.image_width = self.node_if.get_param('render/image_width')
+    status_msg.image_height = self.node_if.get_param('render/image_height')
 
     range_meters = RangeWindow()
-    range_meters.start_range =  nepi_ros.get_param(self,'~process/range_min_m', self.init_proc_range_min_m)
-    range_meters.stop_range =   nepi_ros.get_param(self,'~process/range_max_m', self.init_proc_range_max_m)
+    range_meters.start_range =  self.node_if.get_param('process/range_min_m')
+    range_meters.stop_range =   self.node_if.get_param('process/range_max_m')
 
     status_msg.range_min_max_m = range_meters
 
     range_ratios = RangeWindow()
-    range_ratios.start_range =   nepi_ros.get_param(self,'~render/start_range_ratio', self.init_view_start_range_ratio)
-    range_ratios.stop_range =   nepi_ros.get_param(self,'~render/stop_range_ratio', self.init_view_stop_range_ratio)
+    range_ratios.start_range =   self.node_if.get_param('render/start_range_ratio')
+    range_ratios.stop_range =   self.node_if.get_param('render/stop_range_ratio')
     status_msg.range_clip_ratios = range_ratios
 
-    status_msg.zoom_ratio = nepi_ros.get_param(self,'~render/zoom_ratio',self.init_view_zoom_ratio)
-    status_msg.rotate_ratio = nepi_ros.get_param(self,'~render/rotate_ratio',self.init_view_rotate_ratio)
-    status_msg.tilt_ratio = nepi_ros.get_param(self,'~render/tilt_ratio',self.init_view_tilt_ratio)
+    status_msg.zoom_ratio = self.node_if.get_param('render/zoom_ratio')
+    status_msg.rotate_ratio = self.node_if.get_param('render/rotate_ratio')
+    status_msg.tilt_ratio = self.node_if.get_param('render/tilt_ratio')
 
-    fov = nepi_ros.get_param(self,'~render/cam_fov', self.init_view_cam_fov )
+    fov = self.node_if.get_param('render/cam_fov')
     status_msg.camera_fov = fov
 
-    view = nepi_ros.get_param(self,'~render/cam_view',self.init_view_cam_view)
+    view = self.node_if.get_param('render/cam_view')
     cam_view = Vector3()
     cam_view.x = view[0]
     cam_view.y = view[1]
     cam_view.z = view[2]
     status_msg.camera_view = cam_view
 
-    pos = nepi_ros.get_param(self,'~render/cam_pos',self.init_view_cam_pos)
+    pos = self.node_if.get_param('render/cam_pos')
     cam_pos = Vector3()
     cam_pos.x = pos[0]
     cam_pos.y = pos[1]
     cam_pos.z = pos[2]
     status_msg.camera_position = cam_pos
 
-    rot = nepi_ros.get_param(self,'~render/cam_rot',self.init_view_cam_rot)
+    rot = self.node_if.get_param('render/cam_rot')
     cam_rot = Vector3()
     cam_rot.x = rot[0]
     cam_rot.y = rot[1]
     cam_rot.z = rot[2]
     status_msg.camera_rotation = cam_rot
     
-    use_wbg = nepi_ros.get_param(self,'~render/use_wbg', self.init_use_wbg )
+    use_wbg = self.node_if.get_param('render/use_wbg')
     status_msg.white_background = use_wbg
-    render_enable = nepi_ros.get_param(self,'~render/render_enable',self.init_render_enable)
+    render_enable = self.node_if.get_param('render/render_enable')
     status_msg.render_enable = render_enable
 
-    self.view_status_pub.publish(status_msg)
+    self.node_if.publish_pub(view_status_pub, status_msg)
 
   #######################
   # Data Product Threads
 
   def updatePointcloudSubsThread(self,timer):
     # Subscribe to topic pointcloud topics if not subscribed
-    sel_topics = nepi_ros.get_param(self,'~selected_pointclouds',self.init_selected_pointclouds)
+    sel_topics = self.node_if.get_param('selected_pointclouds')
     for sel_topic in sel_topics:
       if sel_topic != "" and sel_topic not in self.pc_subs_dict.keys():
         if nepi_ros.check_for_topic(sel_topic):
@@ -768,12 +1060,12 @@ class NepiPointcloudViewerApp(object):
           exec('self.' + topic_uid + '_lock = threading.Lock()')
           self.msg_if.pub_info("Subscribing to topic: " + sel_topic)
           #self.msg_if.pub_info("with topic_uid: " + topic_uid)
-          pc_sub = rospy.Subscriber(sel_topic, PointCloud2, lambda msg: self.pointcloudCb(msg, sel_topic), queue_size = 10)
+          pc_sub = self.nepi_ros.create_subscriber(sel_topic, PointCloud2, lambda msg: self.pointcloudCb(msg, sel_topic), queue_size = 10)
           self.pc_subs_dict[sel_topic] = pc_sub
           self.msg_if.pub_info("Pointcloud: " + sel_topic + " registered")
     if len(list(self.pc_subs_dict.keys())) > 0 and self.view_img_pub is None:
       self.msg_if.pub_info("Setting up pointcloud_image pub")
-      self.view_img_pub = rospy.Publisher("~pointcloud_image", Image, queue_size=1)
+      self.view_img_pub = self.nepi_ros.create_publisher("~pointcloud_image", Image, queue_size=1)
       time.sleep(1)
     elif len(list(self.pc_subs_dict.keys())) == 0 and self.view_img_pub is not None:
       self.msg_if.pub_info("Taking down pointcloud_image pub")
@@ -791,7 +1083,7 @@ class NepiPointcloudViewerApp(object):
     for topic in unreg_topic_list: 
           self.pc_subs_dict.pop(topic)
     # Update primary pointcloud if needed
-    primary_pc = nepi_ros.get_param(self,'~primary_pointcloud', self.init_primary_pointcloud)
+    primary_pc = self.node_if.get_param('primary_pointcloud')
     #print(self.pc_subs_dict.keys())
     if primary_pc not in self.pc_subs_dict.keys():
       if len(self.pc_subs_dict.keys()) > 0:
@@ -800,7 +1092,7 @@ class NepiPointcloudViewerApp(object):
         primary_pc = "None"
       if primary_pc != "None":
         self.msg_if.pub_info("Primary pointcloud set to: " + primary_pc)
-    nepi_ros.set_param(self,'~primary_pointcloud', primary_pc)
+    self.node_if.set_param('primary_pointcloud', primary_pc)
     self.pc_has_subscribers = (self.proc_pc_pub.get_num_connections() > 0)
     if self.view_img_pub is not None:
       self.img_has_subscribers = (self.view_img_pub.get_num_connections() > 0)
@@ -812,7 +1104,7 @@ class NepiPointcloudViewerApp(object):
   def pointcloudCb(self,msg,topic):
       if topic != "":
         topic_uid = topic.replace('/','')
-        transforms_dict = nepi_ros.get_param(self,'~transforms_dict',self.init_transforms_dict)
+        transforms_dict = self.node_if.get_param('transforms_dict')
         if topic in transforms_dict.keys():
           transform = transforms_dict[topic]
         else:
@@ -845,15 +1137,15 @@ class NepiPointcloudViewerApp(object):
     img_save = (img_saving_is_enabled and img_should_save) or img_snapshot_enabled
     need_img = (img_has_subscribers is True) or (img_save is True)
 
-    ros_frame_id = nepi_ros.get_param(self,'~frame_3d', self.init_proc_frame_3d)
-    topic_primary = nepi_ros.get_param(self,'~primary_pointcloud', self.init_primary_pointcloud)
+    ros_frame_id = self.node_if.get_param('frame_3d')
+    topic_primary = self.node_if.get_param('primary_pointcloud')
     
     if (need_pc or need_img and topic_primary != "None"):
       o3d_pc = None
       # Combine selected 
-      age_filter_s = nepi_ros.get_param(self,'~age_filter_s', self.init_age_filter_s)
-      combine_option = nepi_ros.get_param(self,'~combine_option',self.init_combine_option)
-      transforms_dict = nepi_ros.get_param(self,'~transforms_dict',self.init_transforms_dict)
+      age_filter_s = self.node_if.get_param('age_filter_s')
+      combine_option = self.node_if.get_param('combine_option')
+      transforms_dict = self.node_if.get_param('transforms_dict')
       current_time = nepi_ros.ros_time_now()
       pc_add_count = 0
       # Get priamary pointcloud
@@ -918,11 +1210,11 @@ class NepiPointcloudViewerApp(object):
 
         if self.pc_max_range_m != 0:
           # Process Combined Pointcloud
-          clip_enable = nepi_ros.get_param(self,'~process/clip_enabled', self.init_proc_clip_enabled )
+          clip_enable = self.node_if.get_param('process/clip_enabled')
           if clip_enable:
-            min_m = nepi_ros.get_param(self,'~process/range_min_m', self.init_proc_range_min_m)
-            max_m = nepi_ros.get_param(self,'~process/range_max_m', self.init_proc_range_max_m)
-            clip_process = nepi_ros.get_param(self,'~process/clip_selection', self.init_proc_clip_selection )
+            min_m = self.node_if.get_param('process/range_min_m')
+            max_m = self.node_if.get_param('process/range_max_m')
+            clip_process = self.node_if.get_param('process/clip_selection')
             if clip_process == 'Range' and min_m < 0:
               min_m = 0
             clip_function = self.getClipFunction(clip_process)
@@ -937,16 +1229,16 @@ class NepiPointcloudViewerApp(object):
 
 
 
-          k_points = nepi_ros.get_param(self,'~process/uniform_downsample_k_points',self.init_proc_uniform_downsample_k_points)
+          k_points = self.node_if.get_param('process/uniform_downsample_k_points')
           if k_points > 0:
             o3d_pc = nepi_pc.uniform_down_sampling(o3d_pc, k_points)
 
-          num_neighbors = nepi_ros.get_param(self,'~process/outlier_removal_num_neighbors',self.init_proc_outlier_removal_num_neighbors)   
+          num_neighbors = self.node_if.get_param('process/outlier_removal_num_neighbors')   
           if num_neighbors > 0:
             statistical_outlier_removal_std_ratio = 2.0
             [o3d_pc, ind] = nepi_pc.statistical_outlier_removal(o3d_pc, num_neighbors, statistical_outlier_removal_std_ratio)
 
-          voxel_size_m = nepi_ros.get_param(self,'~process/voxel_downsample_size',self.init_proc_voxel_downsample_size)
+          voxel_size_m = self.node_if.get_param('process/voxel_downsample_size')
           if voxel_size_m > 0:
             o3d_pc = nepi_pc.voxel_down_sampling(o3d_pc, voxel_size_m)
 
@@ -960,25 +1252,25 @@ class NepiPointcloudViewerApp(object):
           if pc_save is True:
             nepi_save.save_pc2file(self,'pointcloud',o3d_pc,current_time, save_check = False)
             
-          render_enable = nepi_ros.get_param(self,'~render/render_enable', self.init_render_enable)
+          render_enable = self.node_if.get_param('render/render_enable')
 	  
           if need_img and render_enable:
             # Render the pointcloud image
-            img_width = nepi_ros.get_param(self,'~render/image_width',  self.init_image_width)
-            img_height = nepi_ros.get_param(self,'~render/image_height', self.init_image_height)
-            start_range_ratio = nepi_ros.get_param(self,'~render/start_range_ratio', self.init_view_start_range_ratio)
-            stop_range_ratio = nepi_ros.get_param(self,'~render/stop_range_ratio', self.init_view_stop_range_ratio)
-            zoom_ratio = nepi_ros.get_param(self,'~render/zoom_ratio',self.init_view_zoom_ratio)
-            rotate_ratio = nepi_ros.get_param(self,'~render/rotate_ratio',self.init_view_rotate_ratio)
-            tilt_ratio = nepi_ros.get_param(self,'~render/tilt_ratio',self.init_view_tilt_ratio)
-            cam_fov = nepi_ros.get_param(self,'~render/cam_fov', self.init_view_cam_fov )
-            cam_view = nepi_ros.get_param(self,'~render/cam_view',self.init_view_cam_view)
-            cam_pos = nepi_ros.get_param(self,'~render/cam_pos',self.init_view_cam_pos)
-            cam_rot = nepi_ros.get_param(self,'~render/cam_rot',self.init_view_cam_rot)
+            img_width = self.node_if.get_param('render/image_width')
+            img_height = self.node_if.get_param('render/image_height')
+            start_range_ratio = self.node_if.get_param('render/start_range_ratio')
+            stop_range_ratio = self.node_if.get_param('render/stop_range_ratio')
+            zoom_ratio = self.node_if.get_param('render/zoom_ratio')
+            rotate_ratio = self.node_if.get_param('render/rotate_ratio')
+            tilt_ratio = self.node_if.get_param('render/tilt_ratio')
+            cam_fov = self.node_if.get_param('render/cam_fov')
+            cam_view = self.node_if.get_param('render/cam_view')
+            cam_pos = self.node_if.get_param('render/cam_pos')
+            cam_rot = self.node_if.get_param('render/cam_rot')
 
             # ToDo: Fix self pc_min_range_m and pc_max_range_m calcs
-            min_range_m =  nepi_ros.get_param(self,'~process/range_min_m', self.init_proc_range_min_m)
-            max_range_m =   nepi_ros.get_param(self,'~process/range_max_m', self.init_proc_range_max_m)
+            min_range_m =  self.node_if.get_param('process/range_min_m')
+            max_range_m =   self.node_if.get_param('process/range_max_m')
 
 
             delta_range_m = max_range_m - min_range_m
@@ -998,7 +1290,7 @@ class NepiPointcloudViewerApp(object):
             tilt_angle = (0.5 - tilt_ratio) * 2 * 180
             tilt_vector = [0, tilt_angle, 0]
             o3d_pc = nepi_pc.rotate_pc(o3d_pc, tilt_vector)
-            use_wbg = nepi_ros.get_param(self,'~render/use_wbg', self.init_use_wbg )
+            use_wbg = self.node_if.get_param('render/use_wbg')
             bg_color = [0,0,0,0]
             if use_wbg:
               bg_color = [1,1,1,1]
@@ -1031,7 +1323,7 @@ class NepiPointcloudViewerApp(object):
               if self.view_img_pub is not None:
                 if img_has_subscribers:
                   if not nepi_ros.is_shutdown():
-                    self.view_img_pub.publish(ros_img_msg)
+                    self.node_if.publish_pub('view_img_pub', ros_img_msg)
 
               if img_save is True:
                  nepi_save.save_ros_img2file(self,'pointcloud_image',ros_img_msg,current_time, save_check = False)
@@ -1069,7 +1361,7 @@ class NepiPointcloudViewerApp(object):
     return frame3d_list
 
   def getFrame3DTransformsMsg(self):
-    transforms_dict = nepi_ros.get_param(self,'~transforms_dict',self.init_transforms_dict)
+    transforms_dict = self.node_if.get_param('transforms_dict')
     transforms_topic_list = []
     transforms_list = []
     for topic in transforms_dict.keys():
@@ -1105,15 +1397,15 @@ class NepiPointcloudViewerApp(object):
 
   def addTransformToDict(self,transform_msg):
     topic = transform_msg.topic_namespace
-    transforms_dict = nepi_ros.get_param(self,'~transforms_dict',self.init_transforms_dict)
+    transforms_dict = self.node_if.get_param('transforms_dict')
     transforms_dict[topic] = self.getTransformFromMsg(transform_msg.transform)
-    nepi_ros.set_param(self,'~transforms_dict',transforms_dict)
+    self.node_if.set_param('transforms_dict',transforms_dict)
 
   def removeTransformFromDict(self,topic_namespace):
-    transforms_dict = nepi_ros.get_param(self,'~transforms_dict',self.init_transforms_dict)
+    transforms_dict = self.node_if.get_param('transforms_dict')
     if topic_namespace in transforms_dict:
       transforms_dict.pop(topic_namespace)
-    nepi_ros.set_param(self,'~transforms_dict',transforms_dict)
+    self.node_if.get_param('transforms_dict',transforms_dict)
 
     
   #######################
