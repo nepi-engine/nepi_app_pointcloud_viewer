@@ -23,7 +23,6 @@ NEPI_BASE_NAMESPACE = '/nepi/s2x/'
 
 import time
 import sys
-
 import copy
 import numpy as np
 import threading
@@ -44,20 +43,18 @@ from nepi_app_pointcloud_viewer.msg import PointcloudSelectionStatus,PointcloudP
 # For Testing 
 from std_msgs.msg import Header
 from sensor_msgs.msg import PointField
-from sensor_msgs import point_cloud2
+
 
 from nepi_sdk import nepi_ros
 from nepi_sdk import nepi_utils
-from nepi_sdk import nepi_save
-from nepi_sdk import nepi_msg
 from nepi_sdk import nepi_pc 
 from nepi_sdk import nepi_img 
 
 
 from nepi_api.node_if import NodeClassIF
 from nepi_api.messages_if import MsgIF
-from nepi_api.sys_if_save_data import SaveDataIF
-from nepi_api.sys_if_save_cfg import SaveCfgIF
+from nepi_api.system_if import SaveDataIF
+from nepi_api.system_if import SaveCfgIF
 
 
 
@@ -152,14 +149,13 @@ class NepiPointcloudViewerApp(object):
     self.msg_if = MsgIF(log_name = self.class_name)
     self.msg_if.pub_info("Starting IF Initialization Processes")
 
+
     ##############################     
-    # Initialize Params
-    self.initCb(do_updates = False)
-   
-
-   ## Node Setup ########################################################
+    # Initialize Class Variables
 
 
+    ##############################
+    ### Setup Node
 
     # Configs Config Dict ####################
     self.CFGS_DICT = {
@@ -1250,7 +1246,7 @@ class NepiPointcloudViewerApp(object):
               self.proc_pc_pub.publish(ros_pc_out_msg)
 
           if pc_save is True:
-            nepi_save.save_pc2file(self,'pointcloud',o3d_pc,current_time, save_check = False)
+            self.save_data_if.save_pc2file('pointcloud',o3d_pc,current_time, save_check = False)
             
           render_enable = self.node_if.get_param('render/render_enable')
 	  
@@ -1326,7 +1322,7 @@ class NepiPointcloudViewerApp(object):
                     self.node_if.publish_pub('view_img_pub', ros_img_msg)
 
               if img_save is True:
-                 nepi_save.save_ros_img2file(self,'pointcloud_image',ros_img_msg,current_time, save_check = False)
+                 self.save_data_if.save_ros_img2file('pointcloud_image',ros_img_msg,current_time, save_check = False)
           
       else: # Data Empty
           nepi_ros.sleep(0.1)
