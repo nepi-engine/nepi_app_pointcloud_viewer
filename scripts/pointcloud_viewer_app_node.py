@@ -55,6 +55,8 @@ from nepi_api.node_if import NodeClassIF
 from nepi_api.messages_if import MsgIF
 from nepi_api.system_if import SaveDataIF
 from nepi_api.system_if import SaveCfgIF
+from nepi_api.data_if import ImageIF
+from nepi_api.data_if import PointcloudIF
 
 
 
@@ -100,7 +102,7 @@ STANDARD_IMAGE_SIZES = ['630 x 900','720 x 1080','955 x 600','1080 x 1440','1024
 
 class NepiPointcloudViewerApp(object):
   combine_options = ["Add"]
-  data_products = ["pointcloud","pointcloud_image"]
+  data_products_list = ["pointcloud","pointcloud_image"]
   frame3d_list = ['nepi_center_frame','map']
   pc_subs_dict = dict()
   pc_min_range_m = 0.0
@@ -126,13 +128,13 @@ class NepiPointcloudViewerApp(object):
 
   pointclouds_should_update = False
 
-  view_img_pub = None
   acquiring = False
 
-  pc_has_subscribers = False
-  img_has_subscribers = False
   
   last_bg_white = False
+
+  pc_if = None
+  image_if = None
   #######################
   ### Node Initialization
   DEFAULT_NODE_NAME = "app_pointcloud_viewer" # Can be overwitten by luanch command
@@ -271,6 +273,7 @@ class NepiPointcloudViewerApp(object):
 
     }
 
+
     # Publishers Config Dict ####################
     self.PUBS_DICT = {
         'sel_status_pub': {
@@ -280,21 +283,14 @@ class NepiPointcloudViewerApp(object):
             'qsize': 1,
             'latch': True
         },
-        'sel_status_pub': {
+        'proc_status_pub': {
             'namespace': self.node_namespace,
-            'topic': 'status',
-            'msg': PointcloudSelectionStatus,
+            'topic': 'process/status',
+            'msg': PointcloudProcessStatus,
             'qsize': 1,
             'latch': True
         },
-        'proc_pc_pub': {
-            'namespace': self.node_namespace,
-            'topic': 'pointcloud',
-            'msg': PointCloud2,
-            'qsize': 1,
-            'latch': True
-        },
-        'view_status_pub': {
+        'render_status_pub': {
             'namespace': self.node_namespace,
             'topic': 'render/status',
             'msg': PointcloudRenderStatus,
@@ -529,17 +525,14 @@ class NepiPointcloudViewerApp(object):
 
     ready = self.node_if.wait_for_ready()
 
+    self.pc_if = PointcloudIF(namespace = self.node_namespace, topic = 'pointcloud')
 
-    add_all_sub = self.nepi_ros.create_subscriber('~add_all_pcd_files', Empty, self.addAllFilesCb, queue_size = 10)
-    remove_all_sub = self.nepi_ros.create_subscriber('~remove_all_pcd_files', Empty, self.removeAllFilesCb, queue_size = 10)
-    add_file_sub = self.nepi_ros.create_subscriber('~add_pcd_file', String, self.addFileCb, queue_size = 10)
-    remove_file_sub = self.nepi_ros.create_subscriber('~remove_pcd_file', String, self.removeFileCb, queue_size = 10)
 
 
     ##############################
     self.initCb(do_updates = True)
     # Set up save data and save config services ########################################################
-    self.save_data_if = SaveDataIF(data_product_names = self.data_products)
+    self.save_data_if = SaveDataIF(data_product_names = self.data_products_list)
 
 
     ##############################
@@ -940,7 +933,7 @@ class NepiPointcloudViewerApp(object):
       primary_pointcloud = "None"
     self.node_if.set_param('primary_pointcloud', primary_pointcloud)
     status_msg.primary_pointcloud_topic = primary_pointcloud
-    status_msg.publishing_pointcloud_img = self.view_img_pub is not None
+    status_msg.publishing_pointcloud_img = self.image_if is not None
 
     age_filter_s = self.node_if.get_param('age_filter_s')
     status_msg.age_filter_s = age_filter_s
@@ -1059,14 +1052,14 @@ class NepiPointcloudViewerApp(object):
           pc_sub = self.nepi_ros.create_subscriber(sel_topic, PointCloud2, lambda msg: self.pointcloudCb(msg, sel_topic), queue_size = 10)
           self.pc_subs_dict[sel_topic] = pc_sub
           self.msg_if.pub_info("Pointcloud: " + sel_topic + " registered")
-    if len(list(self.pc_subs_dict.keys())) > 0 and self.view_img_pub is None:
+    if len(list(self.pc_subs_dict.keys())) > 0 and self.image_if is None:
       self.msg_if.pub_info("Setting up pointcloud_image pub")
-      self.view_img_pub = self.nepi_ros.create_publisher("~pointcloud_image", Image, queue_size=1)
+      self.image_if = ImageIF(namespace = self.node_namespace, topic = "pointcloud_image")
       time.sleep(1)
-    elif len(list(self.pc_subs_dict.keys())) == 0 and self.view_img_pub is not None:
+    elif len(list(self.pc_subs_dict.keys())) == 0 and self.image_if is not None:
       self.msg_if.pub_info("Taking down pointcloud_image pub")
-      self.view_img_pub.unregister()
-      self.view_img_pub = None
+      self.image_if.unregister()
+      self.image_if = None
       time.sleep(1)
     # Unregister pointcloud subscribers if not in selected pointclouds list
     unreg_topic_list = []
@@ -1089,11 +1082,6 @@ class NepiPointcloudViewerApp(object):
       if primary_pc != "None":
         self.msg_if.pub_info("Primary pointcloud set to: " + primary_pc)
     self.node_if.set_param('primary_pointcloud', primary_pc)
-    self.pc_has_subscribers = (self.proc_pc_pub.get_num_connections() > 0)
-    if self.view_img_pub is not None:
-      self.img_has_subscribers = (self.view_img_pub.get_num_connections() > 0)
-    else:
-      self.img_has_subscribers = False
     self.publish_selection_status()
     
 
@@ -1119,14 +1107,17 @@ class NepiPointcloudViewerApp(object):
   def updateDataProductsThread(self,timer):
     # Check if new data is needed
 
-    pc_has_subscribers = self.pc_has_subscribers
+    pc_has_subscribers = self.pc_if.has_subscribers_check()
     pc_saving_is_enabled = self.save_data_if.data_product_saving_enabled('pointcloud')
     pc_should_save = pc_saving_is_enabled and self.save_data_if.data_product_should_save('pointcloud')
     pc_snapshot_enabled = self.save_data_if.data_product_snapshot_enabled('pointcloud')
     pc_save = (pc_saving_is_enabled and pc_should_save) or pc_snapshot_enabled
     need_pc = (pc_has_subscribers is True) or (pc_save is True) 
 
-    img_has_subscribers = self.img_has_subscribers
+    if self.image_if is not None:
+      img_has_subscribers = self.image_if.has_subscribers_check()
+    else
+      img_has_subscribers = False
     img_saving_is_enabled = self.save_data_if.data_product_saving_enabled('pointcloud_image')
     img_should_save = self.save_data_if.data_product_should_save('pointcloud_image')
     img_snapshot_enabled = self.save_data_if.data_product_snapshot_enabled('pointcloud_image')
@@ -1241,9 +1232,8 @@ class NepiPointcloudViewerApp(object):
           # Publish and Save Pointcloud Data
           if pc_has_subscribers:
             # ToDo Convert to map frame if selected
-            ros_pc_out_msg = nepi_pc.o3dpc_to_rospc(o3d_pc, stamp=current_time, frame_id=ros_frame_id)
             if not nepi_ros.is_shutdown():
-              self.proc_pc_pub.publish(ros_pc_out_msg)
+              self.pc_if.publish_o3d_pc(o3d_pc, timestamp=current_time, frame_id=ros_frame_id)
 
           if pc_save is True:
             self.save_data_if.save_pc2file('pointcloud',o3d_pc,current_time, save_check = False)
@@ -1251,6 +1241,7 @@ class NepiPointcloudViewerApp(object):
           render_enable = self.node_if.get_param('render/render_enable')
 	  
           if need_img and render_enable:
+            o3d_img = None
             # Render the pointcloud image
             img_width = self.node_if.get_param('render/image_width')
             img_height = self.node_if.get_param('render/image_height')
@@ -1307,7 +1298,6 @@ class NepiPointcloudViewerApp(object):
             else:
               self.img_renderer = nepi_pc.add_img_renderer_geometry(o3d_pc,self.img_renderer, self.img_renderer_mtl)
               o3d_img = nepi_pc.render_img(self.img_renderer,cam_view,cam_pos,cam_rot)
-              ros_img_msg = nepi_pc.o3dimg_to_rosimg(o3d_img, stamp=current_time, frame_id=ros_frame_id)
               self.img_renderer = nepi_pc.remove_img_renderer_geometry(self.img_renderer)
             self.last_img_width = img_width
             self.last_img_height = img_height
@@ -1315,11 +1305,9 @@ class NepiPointcloudViewerApp(object):
 
 
             # Publish and Save Pointcloud Image Data
-            if ros_img_msg is not None:
-              if self.view_img_pub is not None:
-                if img_has_subscribers:
-                  if not nepi_ros.is_shutdown():
-                    self.node_if.publish_pub('view_img_pub', ros_img_msg)
+            if o3d_img is not None:
+              if self.image_if is not None:
+                self.image_if.publish_cv2_img(o3d_img, timestamp=current_time, frame_id=ros_frame_id)
 
               if img_save is True:
                  self.save_data_if.save_ros_img2file('pointcloud_image',ros_img_msg,current_time, save_check = False)
