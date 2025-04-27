@@ -555,13 +555,24 @@ class NepiPointcloudViewerApp(object):
 
 
 
-###################
-## App Callbacks
+  #######################
+  ### Config Functions
 
-  def factoryResetCb(self):
-    self.publish_selection_status()
-    self.publish_process_status()
-    self.publish_render_status()
+
+  def initCb(self,do_updates = False):
+      if do_updates == True:
+        self.resetCb(do_updates)
+
+  def resetCb(self,do_updates = True):
+      self.publish_selection_status()
+      self.publish_process_status()
+      self.publish_render_status()
+
+
+  def factoryResetCb(self,do_updates = True):
+      self.publish_selection_status()
+      self.publish_process_status()
+      self.publish_render_status()
 
   ###################
   ## Selection Callbacks
@@ -570,11 +581,11 @@ class NepiPointcloudViewerApp(object):
     self.resetSelectionControls()
   
   def resetSelectionControls(self,do_updates = True):
-    self.node_if.set_param('selected_pointclouds', self.init_selected_pointclouds)
-    self.node_if.set_param('primary_pointcloud', self.init_primary_pointcloud)
-    self.node_if.set_param('age_filter_s', self.init_age_filter_s)
-    self.node_if.set_param('transforms_dict', self.init_transforms_dict)
-    self.node_if.set_param('combine_option', self.init_combine_option)
+    self.node_if.reset_param('selected_pointclouds')
+    self.node_if.reset_param('primary_pointcloud')
+    self.node_if.reset_param('age_filter_s')
+    self.node_if.reset_param('transforms_dict')
+    self.node_if.reset_param('combine_option')
     if do_updates:
       self.publish_process_status()
 
@@ -659,14 +670,14 @@ class NepiPointcloudViewerApp(object):
     self.resetProcessControls()
   
   def resetProcessControls(self,do_updates = True):
-    self.node_if.set_param('process/clip_enabled', self.init_proc_clip_enabled )
-    self.node_if.set_param('process/clip_selection', self.init_proc_clip_selection )
-    self.node_if.set_param('process/range_min_m', self.init_proc_range_min_m)
-    self.node_if.set_param('process/range_max_m', self.init_proc_range_max_m)
+    self.node_if.reset_param('process/clip_enabled')
+    self.node_if.reset_param('process/clip_selection')
+    self.node_if.reset_param('process/range_min_m')
+    self.node_if.reset_param('process/range_max_m')
     self.bounding_box3d_topic = "NONE"
-    self.node_if.set_param('process/voxel_downsample_size',self.init_proc_voxel_downsample_size)
-    self.node_if.set_param('process/uniform_downsample_k_points',self.init_proc_uniform_downsample_k_points)
-    self.node_if.set_param('process/outlier_removal_num_neighbors',self.init_proc_outlier_removal_num_neighbors)   
+    self.node_if.reset_param('process/voxel_downsample_size')
+    self.node_if.reset_param('process/uniform_downsample_k_points')
+    self.node_if.reset_param('process/outlier_removal_num_neighbors')   
     if do_updates:
       self.publish_process_status()
 
@@ -740,19 +751,19 @@ class NepiPointcloudViewerApp(object):
     self.resetRenderControls()
 
   def resetRenderControls(self,do_updates = True):
-    self.node_if.set_param('render/image_width',  self.init_image_width)
-    self.node_if.set_param('render/image_height', self.init_image_height)
-    self.node_if.set_param('render/start_range_ratio', self.init_view_start_range_ratio)
-    self.node_if.set_param('render/stop_range_ratio', self.init_view_stop_range_ratio)
-    self.node_if.set_param('render/zoom_ratio',self.init_view_zoom_ratio)
-    self.node_if.set_param('render/rotate_ratio',self.init_view_rotate_ratio)
-    self.node_if.set_param('render/tilt_ratio',self.init_view_tilt_ratio)
-    self.node_if.set_param('render/cam_fov', self.init_view_cam_fov)
-    self.node_if.set_param('render/cam_view',self.init_view_cam_view)
-    self.node_if.set_param('render/cam_pos',self.init_view_cam_pos)
-    self.node_if.set_param('render/cam_rot',self.init_view_cam_rot)
-    self.node_if.set_param('render/use_wbg', self.init_use_wbg )
-    self.node_if.set_param('render/render_enable', self.init_render_enable)
+    self.node_if.reset_param('render/image_width')
+    self.node_if.reset_param('render/image_height')
+    self.node_if.reset_param('render/start_range_ratio')
+    self.node_if.reset_param('render/stop_range_ratio')
+    self.node_if.reset_param('render/zoom_ratio')
+    self.node_if.reset_param('render/rotate_ratio')
+    self.node_if.reset_param('render/tilt_ratio')
+    self.node_if.reset_param('render/cam_fov')
+    self.node_if.reset_param('render/cam_view')
+    self.node_if.reset_param('render/cam_pos')
+    self.node_if.reset_param('render/cam_rot')
+    self.node_if.reset_param('render/use_wbg')
+    self.node_if.reset_param('render/render_enable')
     
     if do_updates:
       self.publish_render_status()
@@ -867,54 +878,7 @@ class NepiPointcloudViewerApp(object):
     self.publish_render_status()
 
 
-  #######################
-  ### Config Functions
 
-
-  def initCb(self,do_updates = False):
-      self.msg_if.pub_info("Reseting init values to param values")
-      self.init_selected_pointclouds = self.node_if.get_param('selected_pointclouds')
-      self.init_primary_pointcloud = self.node_if.get_param('primary_pointcloud')
-      self.init_age_filter_s = self.node_if.get_param('age_filter_s')
-      self.init_transforms_dict = self.node_if.get_param('transforms_dict')
-      self.init_combine_option = self.node_if.get_param('combine_option')
-    
-      self.init_proc_clip_enabled = self.node_if.get_param('process/clip_enabled')
-      self.init_proc_clip_selection = self.node_if.get_param('process/clip_selection')
-      self.init_proc_range_min_m = self.node_if.get_param('process/range_min_m')
-      self.init_proc_range_max_m = self.node_if.get_param('process/range_max_m')
-      self.init_proc_voxel_downsample_size = self.node_if.get_param('process/voxel_downsample_size')
-      self.init_proc_uniform_downsample_k_points = self.node_if.get_param('process/uniform_downsample_k_points')
-      self.init_proc_outlier_removal_num_neighbors = self.node_if.get_param('process/outlier_removal_num_neighbors')
-      self.init_proc_frame_3d = self.node_if.get_param('frame_3d')
-    
-      self.init_image_width = self.node_if.get_param('render/image_width')
-      self.init_image_height = self.node_if.get_param('render/image_height')
-      self.init_view_start_range_ratio = self.node_if.get_param('render/start_range_ratio')
-      self.init_view_stop_range_ratio = self.node_if.get_param('render/stop_range_ratio')
-      self.init_view_zoom_ratio = self.node_if.get_param('render/zoom_ratio')
-      self.init_view_rotate_ratio = self.node_if.get_param('render/rotate_ratio')
-      self.init_view_tilt_ratio = self.node_if.get_param('render/tilt_ratio')
-
-      self.init_view_cam_fov = self.node_if.get_param('render/cam_fov')
-      self.init_view_cam_view = self.node_if.get_param('render/cam_view')
-      self.init_view_cam_pos = self.node_if.get_param('render/cam_pos')
-      self.init_view_cam_rot = self.node_if.get_param('render/cam_rot')
-
-      self.init_use_wbg = self.node_if.get_param('render/use_wbg', False )
-      self.init_render_enable = self.node_if.get_param('render/render_enable', Factory_Render_Enable)
-      if do_updates == True:
-        self.resetCb(do_updates)
-
-  def resetCb(self,do_updates = True):
-      self.msg_if.pub_info("Reseting param values to init values")
-      self.resetSelectionControls(do_updates)
-      self.resetProcessControls(do_updates)
-      self.resetRenderControls(do_updates)
-
-      self.publish_selection_status()
-      self.publish_process_status()
-      self.publish_render_status()
 
 
 
