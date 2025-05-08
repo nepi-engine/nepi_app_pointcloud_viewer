@@ -54,7 +54,6 @@ from nepi_sdk import nepi_img
 from nepi_api.node_if import NodeClassIF
 from nepi_api.messages_if import MsgIF
 from nepi_api.system_if import SaveDataIF
-from nepi_api.system_if import SaveCfgIF
 from nepi_api.data_if import ImageIF
 from nepi_api.data_if import PointcloudIF
 
@@ -172,7 +171,7 @@ class NepiPointcloudViewerApp(object):
     self.PARAMS_DICT = {
         'selected_pointclouds': {
             'namespace': self.node_namespace,
-            'factory_val': self.[]
+            'factory_val': []
         },
         'primary_pointcloud': {
             'namespace': self.node_namespace,
@@ -180,7 +179,7 @@ class NepiPointcloudViewerApp(object):
         },
         'age_filter_s': {
             'namespace': self.node_namespace,
-            'factory_val': self.Factory_Age_Filter_S
+            'factory_val': Factory_Age_Filter_S
         },
         'transforms_dict': {
             'namespace': self.node_namespace,
@@ -1080,7 +1079,7 @@ class NepiPointcloudViewerApp(object):
 
     if self.image_if is not None:
       img_has_subscribers = self.image_if.has_subscribers_check()
-    else
+    else:
       img_has_subscribers = False
     img_saving_is_enabled = self.save_data_if.data_product_saving_enabled('pointcloud_image')
     img_should_save = self.save_data_if.data_product_should_save('pointcloud_image')
