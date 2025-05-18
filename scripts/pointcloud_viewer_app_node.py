@@ -183,91 +183,87 @@ class NepiPointcloudViewerApp(object):
         },
         'transforms_dict': {
             'namespace': self.node_namespace,
-            'factory_val': self.dict()
+            'factory_val': dict()
         },
         'combine_option': {
             'namespace': self.node_namespace,
-            'factory_val': self.Factory_Combine_Option
+            'factory_val': Factory_Combine_Option
         },
         'process/clip_enabled': {
             'namespace': self.node_namespace,
-            'factory_val': self.Factory_Clip_Selection
+            'factory_val': Factory_Clip_Selection
         },
         'process/range_min_m': {
-            'process/clip_selection': self.node_namespace,
-            'factory_val': self.Factory_Clip_Min_Range_M
+            'namespace': self.node_namespace,
+            'factory_val': Factory_Clip_Min_Range_M
         },
         'process/range_max_m': {
             'namespace': self.node_namespace,
-            'factory_val': self.Factory_Clip_Max_Range_M
+            'factory_val': Factory_Clip_Max_Range_M
         },
         'process/voxel_downsample_size': {
             'namespace': self.node_namespace,
-            'factory_val': self.Factory_Voxel_DownSample_Size
+            'factory_val': Factory_Voxel_DownSample_Size
         },
         'process/uniform_downsample_k_points': {
             'namespace': self.node_namespace,
-            'factory_val': self.FACTORY_PUB_RATE_HZ
-        },
-        'process/uniform_downsample_k_points': {
-            'namespace': self.node_namespace,
-            'factory_val': self.Factory_Uniform_DownSample_K_Points
+            'factory_val': Factory_Uniform_DownSample_K_Points
         },
         'process/outlier_removal_num_neighbors': {
             'namespace': self.node_namespace,
-            'factory_val': self.Factory_Outlier_Removal_Num_Neighbors
+            'factory_val': Factory_Outlier_Removal_Num_Neighbors
         },
         'frame_3d': {
             'namespace': self.node_namespace,
-            'factory_val': self.Factory_Frame_3d
+            'factory_val': Factory_Frame_3d
         },
         'render/image_width': {
             'namespace': self.node_namespace,
-            'factory_val': self.Factory_Image_Width
+            'factory_val': Factory_Image_Width
         },
         'render/image_height': {
             'namespace': self.node_namespace,
-            'factory_val': self.Factory_Image_Height
+            'factory_val': Factory_Image_Height
         },
         'render/start_range_ratio': {
             'namespace': self.node_namespace,
-            'factory_val': self.Factory_Start_Range_Ratio
+            'factory_val': Factory_Start_Range_Ratio
         },
         'render/zoom_ratio': {
             'namespace': self.node_namespace,
-            'factory_val': self.Factory_Zoom_Ratio
+            'factory_val': Factory_Zoom_Ratio
         },
         'render/rotate_ratio': {
             'namespace': self.node_namespace,
-            'factory_val': self.Factory_Rotate_Ratio
+            'factory_val': Factory_Rotate_Ratio
         },
         'render/tilt_ratio': {
             'namespace': self.node_namespace,
-            'factory_val': self.Factory_Tilt_Ratio
+            'factory_val': Factory_Tilt_Ratio
         },
         'render/cam_fov': {
             'namespace': self.node_namespace,
-            'factory_val': self.Factory_Cam_FOV
+            'factory_val': Factory_Cam_FOV
         },
         'render/cam_view': {
             'namespace': self.node_namespace,
-            'factory_val': self.Factory_Cam_View
+            'factory_val':Factory_Cam_View
         },
         'render/cam_pos': {
             'namespace': self.node_namespace,
-            'factory_val': self.Factory_Cam_Pos
+            'factory_val':Factory_Cam_Pos
         },
         'render/cam_rot': {
             'namespace': self.node_namespace,
-            'factory_val': self.Factory_Cam_Rot
+            'factory_val':Factory_Cam_Rot
         },
         'render/use_wbg': {
             'namespace': self.node_namespace,
             'factory_val': False
         },
-        'render/use_wbg': {
+        'render/render_enable': {
             'namespace': self.node_namespace,
-            'factory_val': self.Factory_Render_Enable
+            'factory_val':Factory_Render_Enable
         }
 
     }
@@ -280,21 +276,21 @@ class NepiPointcloudViewerApp(object):
             'topic': 'status',
             'msg': PointcloudSelectionStatus,
             'qsize': 1,
-            'latch': True
+            'latch': False
         },
         'proc_status_pub': {
             'namespace': self.node_namespace,
             'topic': 'process/status',
             'msg': PointcloudProcessStatus,
             'qsize': 1,
-            'latch': True
+            'latch': False
         },
         'render_status_pub': {
             'namespace': self.node_namespace,
             'topic': 'render/status',
             'msg': PointcloudRenderStatus,
             'qsize': 1,
-            'latch': True
+            'latch': False
         }
     }
 
@@ -530,7 +526,7 @@ class NepiPointcloudViewerApp(object):
     ##############################
     self.initCb(do_updates = True)
     # Set up save data and save config services ########################################################
-    self.save_data_if = SaveDataIF(data_product_names = self.data_products_list)
+    self.save_data_if = SaveDataIF(data_products = self.data_products_list)
 
 
     ##############################
@@ -543,8 +539,8 @@ class NepiPointcloudViewerApp(object):
 
     ##############################
     ## Start Pointcloud Subscriber Update Process
-    nepi_ros.timer(nepi_ros.ros_duration(self.update_pointcloud_subs_interval_sec), self.updatePointcloudSubsThread)
-    nepi_ros.timer(nepi_ros.ros_duration(self.update_data_products_interval_sec), self.updateDataProductsThread)
+    nepi_ros.start_timer_process(self.update_pointcloud_subs_interval_sec, self.updatePointcloudSubsThread)
+    nepi_ros.start_timer_process(self.update_data_products_interval_sec, self.updateDataProductsThread)
 
     ## Initiation Complete
     self.msg_if.pub_info("Initialization Complete")
@@ -700,7 +696,7 @@ class NepiPointcloudViewerApp(object):
       self.bounding_box3d_sub.Unregister()
       self.bounding_box3d_sub = None
     if topic != "NONE":
-      self.bounding_box3d_sub = self.nepi_ros.create_subscriber('~set_clip_target_topic', String, self.setClipTargetTopicCb, queue_size = 10)
+      self.bounding_box3d_sub = nepi_ros.create_subscriber('~set_clip_target_topic', String, self.setClipTargetTopicCb, queue_size = 10)
     self.bounding_box3d_msg = None
     self.publish_process_status()
 
@@ -993,7 +989,7 @@ class NepiPointcloudViewerApp(object):
     render_enable = self.node_if.get_param('render/render_enable')
     status_msg.render_enable = render_enable
 
-    self.node_if.publish_pub(view_status_pub, status_msg)
+    self.node_if.publish_pub("render_status_pub", status_msg)
 
   #######################
   # Data Product Threads
@@ -1011,7 +1007,7 @@ class NepiPointcloudViewerApp(object):
           exec('self.' + topic_uid + '_lock = threading.Lock()')
           self.msg_if.pub_info("Subscribing to topic: " + sel_topic)
           #self.msg_if.pub_info("with topic_uid: " + topic_uid)
-          pc_sub = self.nepi_ros.create_subscriber(sel_topic, PointCloud2, lambda msg: self.pointcloudCb(msg, sel_topic), queue_size = 10)
+          pc_sub = nepi_ros.create_subscriber(sel_topic, PointCloud2, lambda msg: self.pointcloudCb(msg, sel_topic), queue_size = 10)
           self.pc_subs_dict[sel_topic] = pc_sub
           self.msg_if.pub_info("Pointcloud: " + sel_topic + " registered")
     if len(list(self.pc_subs_dict.keys())) > 0 and self.image_if is None:
