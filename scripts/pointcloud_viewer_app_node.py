@@ -191,7 +191,7 @@ class NepiPointcloudViewerApp(object):
         },
         'process/clip_enabled': {
             'namespace': self.node_namespace,
-            'factory_val': Factory_Clip_Selection
+            'factory_val': Factory_Clip_Enabled
         },
         'process/range_min_m': {
             'namespace': self.node_namespace,
@@ -921,7 +921,7 @@ class NepiPointcloudViewerApp(object):
   def publish_process_status(self):
     status_msg = PointcloudProcessStatus()
 
-    status_msg.clip_enabled = self.node_if.get_param('process/clip_enabled')
+    status_msg.clip_enabled = bool(self.node_if.get_param('process/clip_enabled'))
     status_msg.clip_options = self.clip_options
     status_msg.clip_selection = self.node_if.get_param('process/clip_selection')
     range_meters = RangeWindow()
@@ -952,8 +952,8 @@ class NepiPointcloudViewerApp(object):
     status_msg.range_min_max_m = range_meters
 
     range_ratios = RangeWindow()
-    range_ratios.start_range =   self.node_if.get_param('render/start_range_ratio')
-    range_ratios.stop_range =   self.node_if.get_param('render/stop_range_ratio')
+    range_ratios.start_range =   float(self.node_if.get_param('render/start_range_ratio'))
+    range_ratios.stop_range =   float(self.node_if.get_param('render/stop_range_ratio'))
     status_msg.range_clip_ratios = range_ratios
 
     status_msg.zoom_ratio = self.node_if.get_param('render/zoom_ratio')
