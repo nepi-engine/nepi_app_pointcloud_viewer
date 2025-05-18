@@ -261,7 +261,7 @@ class NepiPointcloudViewerApp(object):
             'namespace': self.node_namespace,
             'factory_val': False
         },
-        'render/use_wbg': {
+        'render/render_enable': {
             'namespace': self.node_namespace,
             'factory_val':Factory_Render_Enable
         }
@@ -276,21 +276,21 @@ class NepiPointcloudViewerApp(object):
             'topic': 'status',
             'msg': PointcloudSelectionStatus,
             'qsize': 1,
-            'latch': True
+            'latch': False
         },
         'proc_status_pub': {
             'namespace': self.node_namespace,
             'topic': 'process/status',
             'msg': PointcloudProcessStatus,
             'qsize': 1,
-            'latch': True
+            'latch': False
         },
         'render_status_pub': {
             'namespace': self.node_namespace,
             'topic': 'render/status',
             'msg': PointcloudRenderStatus,
             'qsize': 1,
-            'latch': True
+            'latch': False
         }
     }
 
