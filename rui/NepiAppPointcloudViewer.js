@@ -25,7 +25,6 @@ import Label from "./Label"
 import Select, { Option } from "./Select"
 import Styles from "./Styles"
 import Button, { ButtonMenu } from "./Button"
-import CameraViewer from "./CameraViewer"
 import Input from "./Input"
 
 import { round, convertStrToStrList, createShortValuesFromNamespaces, createMenuListFromStrList,
@@ -34,7 +33,7 @@ import { round, convertStrToStrList, createShortValuesFromNamespaces, createMenu
 
 import NepiPointcloudProcessControls from "./NepiAppPointcloudProcess"
 import NepiPointcloudRenderControls from "./NepiAppPointcloudRender"
-
+import ImageViewer from "./Nepi_IF_ImageViewer"
 import NepiIFSaveData from "./Nepi_IF_SaveData"
 
 @inject("ros")
@@ -599,7 +598,7 @@ class PointcloudViewerApp extends Component {
       <React.Fragment>
         <Columns>
           <Column equalWidth={false}>
-            <CameraViewer
+            <ImageViewer
               imageTopic={img_topic}
               title={"pointcloud_image"}
               hideQualitySelector={false}
