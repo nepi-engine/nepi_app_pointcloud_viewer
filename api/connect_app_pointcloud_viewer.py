@@ -39,6 +39,8 @@ from nepi_sdk import nepi_utils
 from nepi_sdk import nepi_pc 
 from nepi_sdk import nepi_img 
 
+from nepi_ros_interfaces.msg import SaveDataRate, SaveDataStatus
+
 from nepi_api.messages_if import MsgIF
 from nepi_api.connect_system_if import ConnectSaveDataIF
 from nepi_api.data_if import ImageIF
@@ -491,27 +493,27 @@ class ConnectAppPointcloudViewer:
     def set_voxel_downsample_size(self,voxel_size):
         pub_name = 'voxel_downsample_size'
         msg = voxel_size
-        self.con_node_if.publish_pub(pub_name,msg):  
+        self.con_node_if.publish_pub(pub_name,msg)  
 
     def set_downsample_k_points(self,k_points):
         pub_name = 'downsample_k_points'
         msg = k_points
-        self.con_node_if.publish_pub(pub_name,msg):  
+        self.con_node_if.publish_pub(pub_name,msg)  
 
     def outlier_removal(self,outlier):
         pub_name = 'outlier_removal'
         msg = outlier
-        self.con_node_if.publish_pub(pub_name,msg):  
+        self.con_node_if.publish_pub(pub_name,msg)  
 
-    def reset_controls(self)
+    def reset_controls(self):
         pub_name = 'render_reset_controls'
         msg = Empty()
-        self.con_node_if.publish_pub(pub_name,msg):
+        self.con_node_if.publish_pub(pub_name,msg)
 
     def set_image_size(self,image_size):
         pub_name = 'set_image_size'
         msg = image_size
-        self.con_node_if.publish_pub(pub_name,msg):  
+        self.con_node_if.publish_pub(pub_name,msg)  
 
     def set_range_ratios(self,range_ratios):
         pub_name = 'set_range_ratios'
