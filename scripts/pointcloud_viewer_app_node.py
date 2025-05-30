@@ -792,13 +792,6 @@ class NepiPointcloudViewerApp(object):
       self.node_if.set_param('render/zoom_ratio',new_val)
     self.publish_render_status()
 
-  def setZoomRatioCb(self,msg):
-    #self.msg_if.pub_info(str(msg))
-    new_val = msg.data
-    if new_val >= 0 and new_val <= 1 :
-      self.node_if.set_param('render/zoom_ratio',new_val)
-    self.publish_render_status()
-
   def setRotateRatioCb(self,msg):
     #self.msg_if.pub_info(str(msg))
     new_val = msg.data
