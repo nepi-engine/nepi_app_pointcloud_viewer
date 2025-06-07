@@ -36,7 +36,7 @@ from sensor_msgs.msg import Image, PointCloud2
 from cv_bridge import CvBridge
 from std_msgs.msg import UInt8, Empty, String, Bool, Float32, Int32
 from geometry_msgs.msg import Vector3, Transform, Quaternion 
-from nepi_ros_interfaces.msg import IDXStatus, RangeWindow, ImageSize, \
+from nepi_sdk_interfaces.msg import IDXStatus, RangeWindow, ImageSize, \
   Frame3DTransform, Frame3DTransformUpdate, BoundingBox3D
 from nepi_app_pointcloud_viewer.msg import PointcloudSelectionStatus,PointcloudProcessStatus,PointcloudRenderStatus
 
@@ -45,7 +45,7 @@ from std_msgs.msg import Header
 from sensor_msgs.msg import PointField
 
 
-from nepi_sdk import nepi_ros
+from nepi_sdk import nepi_sdk
 from nepi_sdk import nepi_utils
 from nepi_sdk import nepi_pc 
 from nepi_sdk import nepi_img 
@@ -139,11 +139,11 @@ class NepiPointcloudViewerApp(object):
   DEFAULT_NODE_NAME = "app_pointcloud_viewer" # Can be overwitten by luanch command
   def __init__(self):
     #### APP NODE INIT SETUP ####
-    nepi_ros.init_node(name= self.DEFAULT_NODE_NAME)
+    nepi_sdk.init_node(name= self.DEFAULT_NODE_NAME)
     self.class_name = type(self).__name__
-    self.base_namespace = nepi_ros.get_base_namespace()
-    self.node_name = nepi_ros.get_node_name()
-    self.node_namespace = nepi_ros.get_node_namespace()
+    self.base_namespace = nepi_sdk.get_base_namespace()
+    self.node_name = nepi_sdk.get_node_name()
+    self.node_namespace = nepi_sdk.get_node_namespace()
 
     ##############################  
     # Create Msg Class
@@ -539,12 +539,12 @@ class NepiPointcloudViewerApp(object):
 
     ##############################
     ## Start Pointcloud Subscriber Update Process
-    nepi_ros.start_timer_process(self.update_pointcloud_subs_interval_sec, self.updatePointcloudSubsThread)
-    nepi_ros.start_timer_process(self.update_data_products_interval_sec, self.updateDataProductsThread)
+    nepi_sdk.start_timer_process(self.update_pointcloud_subs_interval_sec, self.updatePointcloudSubsThread)
+    nepi_sdk.start_timer_process(self.update_data_products_interval_sec, self.updateDataProductsThread)
 
     ## Initiation Complete
     self.msg_if.pub_info("Initialization Complete")
-    nepi_ros.spin()
+    nepi_sdk.spin()
 
 
 
@@ -588,7 +588,7 @@ class NepiPointcloudViewerApp(object):
     pc_topic = msg.data
     pc_topics = self.node_if.get_param('selected_pointclouds')
     add_topic = False
-    if nepi_ros.check_for_topic(pc_topic):
+    if nepi_sdk.check_for_topic(pc_topic):
       if pc_topic not in pc_topics:
         add_topic = True
       if add_topic:
@@ -696,7 +696,7 @@ class NepiPointcloudViewerApp(object):
       self.bounding_box3d_sub.Unregister()
       self.bounding_box3d_sub = None
     if topic != "NONE":
-      self.bounding_box3d_sub = nepi_ros.create_subscriber('~set_clip_target_topic', String, self.setClipTargetTopicCb, queue_size = 10)
+      self.bounding_box3d_sub = nepi_sdk.create_subscriber('~set_clip_target_topic', String, self.setClipTargetTopicCb, queue_size = 10)
     self.bounding_box3d_msg = None
     self.publish_process_status()
 
@@ -992,7 +992,7 @@ class NepiPointcloudViewerApp(object):
     sel_topics = self.node_if.get_param('selected_pointclouds')
     for sel_topic in sel_topics:
       if sel_topic != "" and sel_topic not in self.pc_subs_dict.keys():
-        if nepi_ros.check_for_topic(sel_topic):
+        if nepi_sdk.check_for_topic(sel_topic):
           topic_uid = sel_topic.replace('/','')
           exec('self.' + topic_uid + '_pc = None')
           exec('self.' + topic_uid + '_timestamp = None')
@@ -1000,7 +1000,7 @@ class NepiPointcloudViewerApp(object):
           exec('self.' + topic_uid + '_lock = threading.Lock()')
           self.msg_if.pub_info("Subscribing to topic: " + sel_topic)
           #self.msg_if.pub_info("with topic_uid: " + topic_uid)
-          pc_sub = nepi_ros.create_subscriber(sel_topic, PointCloud2, lambda msg: self.pointcloudCb(msg, sel_topic), queue_size = 10)
+          pc_sub = nepi_sdk.create_subscriber(sel_topic, PointCloud2, lambda msg: self.pointcloudCb(msg, sel_topic), queue_size = 10)
           self.pc_subs_dict[sel_topic] = pc_sub
           self.msg_if.pub_info("Pointcloud: " + sel_topic + " registered")
     if len(list(self.pc_subs_dict.keys())) > 0 and self.image_if is None:
@@ -1084,16 +1084,16 @@ class NepiPointcloudViewerApp(object):
       age_filter_s = self.node_if.get_param('age_filter_s')
       combine_option = self.node_if.get_param('combine_option')
       transforms_dict = self.node_if.get_param('transforms_dict')
-      current_time = nepi_ros.ros_time_now()
+      current_time = nepi_sdk.get_msg_time()
       pc_add_count = 0
       # Get priamary pointcloud
       topic_puid = topic_primary.replace('/','')
       if topic_primary in self.pc_subs_dict.keys():
         eval('self.' + topic_puid + '_lock').acquire()
-        ros_timestamp_pr = eval('self.' + topic_puid + '_timestamp')
+        get_msg_timestamp_pr = eval('self.' + topic_puid + '_timestamp')
         primary_pc_frame = eval('self.' + topic_puid + '_frame')
-        if ros_timestamp_pr is not None:
-          pc_age =(current_time.to_sec() - ros_timestamp_pr.to_sec())
+        if get_msg_timestamp_pr is not None:
+          pc_age =(current_time.to_sec() - get_msg_timestamp_pr.to_sec())
           if pc_age <= age_filter_s:
             o3d_ppc = eval('self.' + topic_puid + '_pc')
             if o3d_ppc is not None:
@@ -1114,19 +1114,19 @@ class NepiPointcloudViewerApp(object):
         for topic in self.pc_subs_dict.keys():
           topic_uid = topic.replace('/','')
           if topic_uid != topic_puid:  # Skip the primary pointcloud
-            ros_timestamp_add = None
+            get_msg_timestamp_add = None
             if topic in self.pc_subs_dict.keys():
               eval('self.' + topic_uid + '_lock').acquire()
-              ros_timestamp_add = eval('self.' + topic_uid + '_timestamp')
+              get_msg_timestamp_add = eval('self.' + topic_uid + '_timestamp')
               pc_frame_add = eval('self.' + topic_uid + '_frame')
               o3d_pc_add = eval('self.' + topic_uid + '_pc')
               eval('self.' + topic_uid + '_lock').release()
             #else:
               #self.msg_if.pub_info("Combine pointcloud not registered yet: " + topic_puid)
-            if ros_timestamp_add is not None:
-              #pc_age = abs(current_time - ros_timestamp)
+            if get_msg_timestamp_add is not None:
+              #pc_age = abs(current_time - get_msg_timestamp)
               #pc_age = pc_age.to_sec()
-              pc_age =(current_time.to_sec() - ros_timestamp_add.to_sec())
+              pc_age =(current_time.to_sec() - get_msg_timestamp_add.to_sec())
               if o3d_pc_add is not None:
                 if pc_age <= age_filter_s:
                   if combine_option == 'Add':
@@ -1183,7 +1183,7 @@ class NepiPointcloudViewerApp(object):
           # Publish and Save Pointcloud Data
           if pc_has_subscribers:
             # ToDo Convert to map frame if selected
-            if not nepi_ros.is_shutdown():
+            if not nepi_sdk.is_shutdown():
               self.pc_if.publish_o3d_pc(o3d_pc, timestamp=current_time, frame_id=ros_frame_id)
 
           if pc_save is True:
@@ -1264,10 +1264,10 @@ class NepiPointcloudViewerApp(object):
                  self.save_data_if.save_ros_img2file('pointcloud_image',ros_img_msg,current_time, save_check = False)
           
       else: # Data Empty
-          nepi_ros.sleep(0.1)
+          nepi_sdk.sleep(0.1)
     else: # No data available
-        nepi_ros.sleep(0.25)
-    nepi_ros.sleep(0.01) # Yield
+        nepi_sdk.sleep(0.25)
+    nepi_sdk.sleep(0.01) # Yield
   
       
  

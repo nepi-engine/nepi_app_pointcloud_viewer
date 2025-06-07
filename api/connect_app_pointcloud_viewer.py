@@ -26,7 +26,7 @@ from sensor_msgs.msg import Image, PointCloud2
 from cv_bridge import CvBridge
 from std_msgs.msg import UInt8, Empty, String, Bool, Float32, Int32
 from geometry_msgs.msg import Vector3, Transform, Quaternion 
-from nepi_ros_interfaces.msg import IDXStatus, RangeWindow, ImageSize, \
+from nepi_sdk_interfaces.msg import IDXStatus, RangeWindow, ImageSize, \
   Frame3DTransform, Frame3DTransformUpdate, BoundingBox3D
 from nepi_app_pointcloud_viewer.msg import PointcloudSelectionStatus,PointcloudProcessStatus,PointcloudRenderStatus
 
@@ -34,12 +34,12 @@ from nepi_app_pointcloud_viewer.msg import PointcloudSelectionStatus,PointcloudP
 from std_msgs.msg import Header
 from sensor_msgs.msg import PointField
 
-from nepi_sdk import nepi_ros
+from nepi_sdk import nepi_sdk
 from nepi_sdk import nepi_utils
 from nepi_sdk import nepi_pc 
 from nepi_sdk import nepi_img 
 
-from nepi_ros_interfaces.msg import SaveDataRate, SaveDataStatus
+from nepi_sdk_interfaces.msg import SaveDataRate, SaveDataStatus
 
 from nepi_api.messages_if import MsgIF
 from nepi_api.connect_system_if import ConnectSaveDataIF
@@ -69,9 +69,9 @@ class ConnectAppPointcloudViewer:
                 ):
         ####  IF INIT SETUP ####
         self.class_name = type(self).__name__
-        self.base_namespace = nepi_ros.get_base_namespace()
-        self.node_name = nepi_ros.get_node_name()
-        self.node_namespace = nepi_ros.get_node_namespace()
+        self.base_namespace = nepi_sdk.get_base_namespace()
+        self.node_name = nepi_sdk.get_node_name()
+        self.node_namespace = nepi_sdk.get_node_namespace()
 
         ##############################  
         # Create Msg Class
@@ -83,10 +83,10 @@ class ConnectAppPointcloudViewer:
         # Initialize Class Variables
 
         if namespace is None:
-            namespace = nepi_ros.create_namespace(self.base_namespace,APP_NODE_NAME)
+            namespace = nepi_sdk.create_namespace(self.base_namespace,APP_NODE_NAME)
         else:
             namespace = namespace
-        self.namespace = nepi_ros.get_full_namespace(namespace)
+        self.namespace = nepi_sdk.get_full_namespace(namespace)
 
 
         ##############################   
@@ -378,10 +378,10 @@ class ConnectAppPointcloudViewer:
         if self.ready is not None:
             self.msg_if.pub_info("Waiting for connection")
             timer = 0
-            time_start = nepi_ros.get_time()
-            while self.ready == False and timer < timeout and not nepi_ros.is_shutdown():
-                nepi_ros.sleep(.1)
-                timer = nepi_ros.get_time() - time_start
+            time_start = nepi_sdk.get_time()
+            while self.ready == False and timer < timeout and not nepi_sdk.is_shutdown():
+                nepi_sdk.sleep(.1)
+                timer = nepi_sdk.get_time() - time_start
             if self.ready == False:
                 self.msg_if.pub_info("Failed to Connect")
             else:
@@ -398,10 +398,10 @@ class ConnectAppPointcloudViewer:
         if self.con_node_if is not None:
             self.msg_if.pub_info("Waiting for connection")
             timer = 0
-            time_start = nepi_ros.get_time()
-            while self.connected == False and timer < timeout and not nepi_ros.is_shutdown():
-                nepi_ros.sleep(.1)
-                timer = nepi_ros.get_time() - time_start
+            time_start = nepi_sdk.get_time()
+            while self.connected == False and timer < timeout and not nepi_sdk.is_shutdown():
+                nepi_sdk.sleep(.1)
+                timer = nepi_sdk.get_time() - time_start
             if self.connected == False:
                 self.msg_if.pub_info("Failed to Connect")
             else:
@@ -416,10 +416,10 @@ class ConnectAppPointcloudViewer:
         if self.con_node_if is not None:
             self.msg_if.pub_info("Waiting for status connection")
             timer = 0
-            time_start = nepi_ros.get_time()
-            while self.status_connected == False and timer < timeout and not nepi_ros.is_shutdown():
-                nepi_ros.sleep(.1)
-                timer = nepi_ros.get_time() - time_start
+            time_start = nepi_sdk.get_time()
+            while self.status_connected == False and timer < timeout and not nepi_sdk.is_shutdown():
+                nepi_sdk.sleep(.1)
+                timer = nepi_sdk.get_time() - time_start
             if self.status_connected == False:
                 self.msg_if.pub_info("Failed to connect to status msg")
             else:
@@ -429,7 +429,7 @@ class ConnectAppPointcloudViewer:
     def get_status_dict(self):
         img_status_dict = None
         if self.status_msg is not None:
-            img_status_dict = nepi_ros.convert_msg2dict(self.status_msg)
+            img_status_dict = nepi_sdk.convert_msg2dict(self.status_msg)
         return self.img_status_dict
 
     def unregister(self):

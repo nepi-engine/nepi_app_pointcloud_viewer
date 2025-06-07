@@ -21,7 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
    std_msgs
    geometry_msgs
    nav_msgs
-   nepi_ros_interfaces
+   nepi_sdk_interfaces
 )
 
 ## System dependencies are found with CMake's conventions
@@ -85,7 +85,7 @@ generate_messages(
    sensor_msgs
    geometry_msgs
    nav_msgs
-   nepi_ros_interfaces
+   nepi_sdk_interfaces
 )
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -123,8 +123,8 @@ catkin_package(
    sensor_msgs 
    geometry_msgs
    nav_msgs
-   nepi_ros_interfaces
-#  DEPENDS CATKIN_DEPENDS sensor_msgs nepi_ros_interfaces nepi_sdk 
+   nepi_sdk_interfaces
+#  DEPENDS CATKIN_DEPENDS sensor_msgs nepi_sdk_interfaces nepi_sdk 
 )
 
 
