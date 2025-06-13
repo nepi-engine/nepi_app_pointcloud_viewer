@@ -696,7 +696,7 @@ class NepiPointcloudViewerApp(object):
       self.bounding_box3d_sub.Unregister()
       self.bounding_box3d_sub = None
     if topic != "NONE":
-      self.bounding_box3d_sub = nepi_sdk.create_subscriber('~set_clip_target_topic', String, self.setClipTargetTopicCb, _queue_size = 10)
+      self.bounding_box3d_sub = nepi_sdk.create_subscriber('~set_clip_target_topic', String, self.setClipTargetTopicCb, queue_size = 10)
     self.bounding_box3d_msg = None
     self.publish_process_status()
 
@@ -1000,7 +1000,7 @@ class NepiPointcloudViewerApp(object):
           exec('self.' + topic_uid + '_lock = threading.Lock()')
           self.msg_if.pub_info("Subscribing to topic: " + sel_topic)
           #self.msg_if.pub_info("with topic_uid: " + topic_uid)
-          pc_sub = nepi_sdk.create_subscriber(sel_topic, PointCloud2, lambda msg: self.pointcloudCb(msg, sel_topic), _queue_size = 10)
+          pc_sub = nepi_sdk.create_subscriber(sel_topic, PointCloud2, lambda msg: self.pointcloudCb(msg, sel_topic), queue_size = 10)
           self.pc_subs_dict[sel_topic] = pc_sub
           self.msg_if.pub_info("Pointcloud: " + sel_topic + " registered")
     if len(list(self.pc_subs_dict.keys())) > 0 and self.image_if is None:
