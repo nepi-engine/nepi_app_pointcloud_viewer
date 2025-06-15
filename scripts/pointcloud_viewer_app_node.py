@@ -64,7 +64,7 @@ from nepi_api.data_if import PointcloudIF
 
 # Factory Control Values
 Factory_Combine_Option = 'Add'
-Factory_Frame_3d = 'nepi_center_frame'
+Factory_Frame_3d = 'nepi_frame'
 Factory_Age_Filter_S = 10.0
 
 Factory_Clip_Enabled = True
@@ -102,7 +102,7 @@ STANDARD_IMAGE_SIZES = ['630 x 900','720 x 1080','955 x 600','1080 x 1440','1024
 class NepiPointcloudViewerApp(object):
   combine_options = ["Add"]
   data_products_list = ["pointcloud","pointcloud_image"]
-  frame3d_list = ['nepi_center_frame','map']
+  frame3d_list = ['nepi_frame','map']
   pc_subs_dict = dict()
   pc_min_range_m = 0.0
   pc_max_range_m = 0.1

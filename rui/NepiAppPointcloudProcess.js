@@ -40,7 +40,7 @@ class NepiPointcloudProcessControls extends Component {
       voxel_downsample_size_m: null,
       uniform_downsample_points: null,
       outlier_k_points: null,
-      framesList: ['nepi_center_frame','sensor_frame','map'],
+      framesList: ['nepi_frame','sensor_frame','map'],
       frame_3d: null,
       clip_options: [],
       clip_selection: null,
