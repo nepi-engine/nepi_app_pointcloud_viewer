@@ -26,7 +26,7 @@ from sensor_msgs.msg import Image, PointCloud2
 from cv_bridge import CvBridge
 from std_msgs.msg import UInt8, Empty, String, Bool, Float32, Int32
 from geometry_msgs.msg import Vector3, Transform, Quaternion 
-from nepi_sdk_interfaces.msg import IDXStatus, RangeWindow, ImageSize, \
+from nepi_interfaces.msg import IDXStatus, RangeWindow, ImageSize, \
   Frame3DTransform, Frame3DTransformUpdate, BoundingBox3D
 from nepi_app_pointcloud_viewer.msg import PointcloudSelectionStatus,PointcloudProcessStatus,PointcloudRenderStatus
 
@@ -39,7 +39,7 @@ from nepi_sdk import nepi_utils
 from nepi_sdk import nepi_pc 
 from nepi_sdk import nepi_img 
 
-from nepi_sdk_interfaces.msg import SaveDataRate, SaveDataStatus
+from nepi_interfaces.msg import SaveDataRate, SaveDataStatus
 
 from nepi_api.messages_if import MsgIF
 from nepi_api.connect_system_if import ConnectSaveDataIF

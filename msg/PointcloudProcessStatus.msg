@@ -6,7 +6,7 @@ string[] clip_options
 string clip_selection
 
 # Range limits in meters for the clipping
-nepi_sdk_interfaces/RangeWindow clip_meters
+nepi_interfaces/RangeWindow clip_meters
 
 # Clip bounding box topic
 string clip_target_topic

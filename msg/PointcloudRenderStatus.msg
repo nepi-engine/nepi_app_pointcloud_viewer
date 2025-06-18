@@ -8,11 +8,11 @@ int32 image_width
 int32 image_height
 
 # Range limits in meters for the clipping
-nepi_sdk_interfaces/RangeWindow range_min_max_m
+nepi_interfaces/RangeWindow range_min_max_m
 
 # The range_window field provides the start and stop range as currently configured for the device
 # Each range is expressed as a multiplier on the sensor's max range (0.0 - 1.0)
-nepi_sdk_interfaces/RangeWindow range_clip_ratios
+nepi_interfaces/RangeWindow range_clip_ratios
 
 # Zoom Ratio 0.0 - 1.0
 float32 zoom_ratio
