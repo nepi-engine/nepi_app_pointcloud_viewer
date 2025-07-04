@@ -100,6 +100,9 @@ STANDARD_IMAGE_SIZES = ['630 x 900','720 x 1080','955 x 600','1080 x 1440','1024
 #########################################
 
 class NepiPointcloudViewerApp(object):
+
+  node_if = None
+
   combine_options = ["Add"]
   data_products_list = ["pointcloud","pointcloud_image"]
   frame3d_list = ['nepi_frame','map']
@@ -908,7 +911,8 @@ class NepiPointcloudViewerApp(object):
     range_meters.stop_range =   self.pc_max_range_m
     status_msg.range_min_max_m = range_meters
 
-    self.node_if.publish_pub('sel_status_pub', status_msg)
+    if self.node_if is not None:
+      self.node_if.publish_pub('sel_status_pub', status_msg)
 
 
   def publish_process_status(self):
@@ -928,7 +932,8 @@ class NepiPointcloudViewerApp(object):
     status_msg.uniform_downsample_points = self.node_if.get_param('process/uniform_downsample_k_points')
     status_msg.outlier_k_points = self.node_if.get_param('process/outlier_removal_num_neighbors') 
 
-    self.node_if.publish_pub('proc_status_pub', status_msg)
+    if self.node_if is not None:
+      self.node_if.publish_pub('proc_status_pub', status_msg)
 
   def publish_render_status(self):
     status_msg = PointcloudRenderStatus()
@@ -982,7 +987,8 @@ class NepiPointcloudViewerApp(object):
     render_enable = self.node_if.get_param('render/render_enable')
     status_msg.render_enable = render_enable
 
-    self.node_if.publish_pub("render_status_pub", status_msg)
+    if self.node_if is not None:
+      self.node_if.publish_pub("render_status_pub", status_msg)
 
   #######################
   # Data Product Threads
