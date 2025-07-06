@@ -137,6 +137,32 @@ class NepiPointcloudViewerApp(object):
 
   pc_if = None
   image_if = None
+
+  selected_pointclouds = []
+  primary_pointcloud = "None"
+  age_filter_s = Factory_Age_Filter_S
+  transforms_dict = dict()
+  combine_option = Factory_Combine_Option
+  process/clip_enabled = Factory_Clip_Enabled
+  process/range_min_m = Factory_Clip_Min_Range_M
+  process/range_max_m = Factory_Clip_Max_Range_M
+  process/voxel_downsample_size = Factory_Voxel_DownSample_Size
+  process/uniform_downsample_k_points = Factory_Uniform_DownSample_K_Points
+  process/outlier_removal_num_neighbors = Factory_Outlier_Removal_Num_Neighbors
+  frame_3d = Factory_Frame_3d
+  render/image_width = Factory_Image_Width
+  render/image_height = Factory_Image_Height
+  render/start_range_ratio = Factory_Start_Range_Ratio
+  render/zoom_ratio = Factory_Zoom_Ratio
+  render/rotate_ratio = Factory_Rotate_Ratio
+  render/tilt_ratio = Factory_Tilt_Ratio
+  render/cam_fov = Factory_Cam_FOV
+  render/cam_view = Factory_Cam_View
+  render/cam_pos = Factory_Cam_Pos
+  render/cam_rot = Factory_Cam_Rot
+  render/use_wbg = False
+  render/render_enable = Factory_Render_Enable
+
   #######################
   ### Node Initialization
   DEFAULT_NODE_NAME = "app_pointcloud_viewer" # Can be overwitten by luanch command
@@ -555,21 +581,25 @@ class NepiPointcloudViewerApp(object):
   #######################
   ### Config Functions
 
-
   def initCb(self,do_updates = False):
-      if do_updates == True:
-        self.resetCb(do_updates)
+    if self.node_if is not None:
+
+      pass
+
+    if do_updates == True:
+      pass
+    self.publish_status()
 
   def resetCb(self,do_updates = True):
-      self.publish_selection_status()
-      self.publish_process_status()
-      self.publish_render_status()
-
+    if do_updates:
+        pass
+    self.initCb
 
   def factoryResetCb(self,do_updates = True):
-      self.publish_selection_status()
-      self.publish_process_status()
-      self.publish_render_status()
+    if do_updates:
+        pass
+    self.initCb
+
 
   ###################
   ## Selection Callbacks
