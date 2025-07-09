@@ -583,7 +583,6 @@ class NepiPointcloudViewerApp(object):
 
   def initCb(self,do_updates = False):
     if self.node_if is not None:
-
       pass
 
     if do_updates == True:
@@ -591,14 +590,21 @@ class NepiPointcloudViewerApp(object):
     self.publish_status()
 
   def resetCb(self,do_updates = True):
-    if do_updates:
+      self.msg_if.pub_warn("Reseting")
+      if self.node_if is not None:
         pass
-    self.initCb(do_updates = do_updates)
+      if do_updates == True:
+        pass
+      self.initCb(do_updates = do_updates)
+
 
   def factoryResetCb(self,do_updates = True):
-    if do_updates:
+      self.msg_if.pub_warn("Factory Reseting")
+      if self.node_if is not None:
         pass
-    self.initCb(do_updates = do_updates)
+      if do_updates == True:
+        pass
+      self.initCb(do_updates = do_updates)
 
 
   ###################
